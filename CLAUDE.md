@@ -66,3 +66,4 @@ The eventual plan, per the design intent, is an MCP-style tool layer ("OpenClaw"
 - **Don't restore removed variants.** `variant-d`, `variant-e`, `layout-timeline`, `layout-workbench`, `design-canvas` from the original design bundle were intentionally not ported.
 - **Branch naming.** Use the full word `feature/` (not `feat/`) as the prefix for feature branches — e.g. `feature/issue-1-weather`. Same expectation likely applies to other prefixes (`fix/`, `chore/`).
 - **PR assignee.** When opening a PR, assign it to `@TinyKitten` (pass `--assignee TinyKitten` to `gh pr create`). This is a single-maintainer repo; assignment makes the PR show up on the author's dashboard.
+- **Keep the PR description in sync with the diff.** Whenever new commits are pushed to an existing PR (or its scope shifts), update the PR body with `gh pr edit <num> --body ...` so the description always reflects what's actually in the PR. Don't let description and diff drift apart.
