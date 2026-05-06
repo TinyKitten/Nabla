@@ -1,25 +1,4 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["typescript", "react", "unicorn", "import", "jsx-a11y"],
-  "categories": {
-    "correctness": "error",
-    "suspicious": "warn"
-  },
-  "env": {
-    "browser": true,
-    "es2024": true
-  },
-  "rules": {
-    "no-console": "warn",
-    "no-underscore-dangle": "off",
-    "react/jsx-key": "error",
-    "react/no-array-index-key": "off",
-    "react/react-in-jsx-scope": "off",
-    "import/no-unassigned-import": "off",
-    "unicorn/require-module-specifiers": "off",
-    "jsx-a11y/click-events-have-key-events": "off",
-    "jsx-a11y/no-static-element-interactions": "off",
-    "jsx-a11y/prefer-tag-over-role": "off"
-  },
-  "ignorePatterns": ["dist", "node_modules", "*.tsbuildinfo"]
+  "ignorePatterns": ["dist", "*.tsbuildinfo"]
 }
