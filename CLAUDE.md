@@ -53,7 +53,7 @@ Most `WIDGET_DEFS[type].fetch()` are stubbed and return mock data with light ran
 The eventual plan, per the design intent, is an MCP-style tool layer ("OpenClaw") wired in behind the chat. Until each widget moves over, anything *not* under `src/data/` that looks like an API call is a `setTimeout`.
 
 **4. Tool connection state.**
-`src/state/toolConnections.ts` is a `useSyncExternalStore`-backed module keyed by MCP tool name (`github` / `appStoreConnect` / `googleCalendar` / `openWeather` / `linear`). `ToolsBadge` derives its count and per-tool dot colors from this store. Real data fetchers in `src/data/` are responsible for calling `setToolConnected(name, true|false)` on success / failure. Today only `openWeather` ever flips to `true`.
+`src/state/toolConnections.ts` is a `useSyncExternalStore`-backed module keyed by MCP tool name. The only key today is `openWeather`. `ToolsBadge` derives its count and per-tool dot colors from this store, and real data fetchers in `src/data/` are responsible for calling `setToolConnected(name, true|false)` on success / failure. Add a new key here only when an actual connection lands.
 
 ## Component map (only the non-obvious parts)
 
