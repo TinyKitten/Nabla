@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { fetchWeather, getCachedWeather } from '../data/weather';
+import { fetchStoreRating, getCachedStoreRating } from '../data/storeRating';
 import type { Message, ToolCall, WidgetType } from '../types';
 
 interface QuickReply {
@@ -17,6 +18,15 @@ async function weatherReply(): Promise<string> {
   }
 }
 
+async function ratingReply(): Promise<string> {
+  try {
+    const r = getCachedStoreRating() ?? (await fetchStoreRating());
+    return `TrainLCD のストア評価は **★${r.stars}**(${r.reviews.toLocaleString()} レビュー)です。新規レビューは ${r.delta} です。`;
+  } catch {
+    return 'ストア評価を取得できませんでした。App Store Connect / Google Play の接続設定を確認してください。';
+  }
+}
+
 export const QUICK_REPLIES: Record<string, QuickReply> = {
   weather: {
     tools: [{ name: 'get_weather', label: '天気を取得中', icon: 'globe' }],
@@ -28,7 +38,7 @@ export const QUICK_REPLIES: Record<string, QuickReply> = {
       { name: 'fetch_appstore', label: 'App Store から取得中', icon: 'star' },
       { name: 'fetch_playstore', label: 'Play Store から取得中', icon: 'star' },
     ],
-    text: 'TrainLCD のストア評価は **★4.7**(1,284 レビュー)です。今週は +12 件の新規レビューがあり、評価は先月から 0.1 上昇しています。',
+    text: ratingReply,
     widget: 'storeRating',
   },
   feedback: {
