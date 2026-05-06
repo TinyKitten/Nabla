@@ -33,7 +33,7 @@ export async function fetchFeedback(): Promise<FeedbackData> {
         throw new Error(`store-reviews proxy ${res.status}`);
       }
       const { items, sources } = (await res.json()) as StoreReviewsResponse;
-      const data: FeedbackData = { items, unread: items.length };
+      const data: FeedbackData = { items, unread: 0 };
       cached = { data, at: Date.now() };
       setToolConnected('appStoreConnect', sources.appStore);
       setToolConnected('googlePlayConsole', sources.googlePlay);

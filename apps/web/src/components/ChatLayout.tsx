@@ -33,7 +33,7 @@ interface Shortcut {
 const SHORTCUTS: Shortcut[] = [
   { label: '今日の天気', q: '今日の天気は?', icon: 'cloud-sun' },
   { label: 'ストア評価', q: 'TrainLCDの評価', icon: 'star' },
-  { label: '新着レビュー', q: '新しいフィードバックある?', icon: 'message-dots' },
+  { label: '新着レビュー', q: '新しいレビューある?', icon: 'message-dots' },
   { label: 'パフォーマンス', q: 'パフォーマンス推移は?', icon: 'activity' },
 ];
 

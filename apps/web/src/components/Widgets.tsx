@@ -43,7 +43,7 @@ export const WIDGET_DEFS: Record<WidgetType, WidgetDef> = {
     fetch: fetchStoreRating,
   },
   feedback: {
-    title: 'TrainLCD · 新着フィードバック',
+    title: 'TrainLCD · 新着レビュー',
     icon: 'message-dots',
     fetch: fetchFeedback,
   },
@@ -938,7 +938,7 @@ function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData |
         >
           <span style={{ fontSize: 32, fontWeight: 500 }}>{data.unread}</span>
           <span className="jp-text" style={{ fontSize: 10, color: 'var(--ink-3)' }}>
-            未読フィードバック
+            未読レビュー
           </span>
         </div>
       </>
@@ -959,7 +959,7 @@ function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData |
             color: 'var(--ink-4)',
           }}
         >
-          新着フィードバックはありません
+          新着レビューはありません
         </div>
       );
     }
@@ -989,7 +989,7 @@ function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData |
         <div style={{ flex: 1 }} />
         <div className="jp-text" style={{ fontSize: 10, color: 'var(--ink-4)' }}>
           — {top.author}
-          {data.unread > 1 ? ` · 他 ${data.unread - 1} 件` : ''}
+          {data.items.length > 1 ? ` · 他 ${data.items.length - 1} 件` : ''}
         </div>
       </>
     );
@@ -1002,7 +1002,7 @@ function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData |
           className="jp-text"
           style={{ fontSize: 12, color: 'var(--ink-4)', padding: '8px 0' }}
         >
-          新着フィードバックはありません
+          新着レビューはありません
         </div>
       )}
       {lgItems.map((it, i) => (

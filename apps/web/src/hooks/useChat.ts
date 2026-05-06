@@ -39,7 +39,7 @@ async function feedbackReply(): Promise<string> {
     const samples = f.items.slice(0, 3).map((i) => `「${i.text.slice(0, 40)}」`).join('、');
     const breakdown =
       ios && android ? `iOS ${ios} 件 / Android ${android} 件` : ios ? `iOS ${ios} 件` : `Android ${android} 件`;
-    return `直近の新着フィードバックは ${f.items.length} 件 (${breakdown})。${samples} など。Issue 化したいものがあれば教えてください。`;
+    return `直近の新着レビューは ${f.items.length} 件 (${breakdown})。${samples} など。Issue 化したいものがあれば教えてください。`;
   } catch {
     return 'ストアレビューを取得できませんでした。App Store Connect / Google Play Console の接続設定を確認してください。';
   }
@@ -68,7 +68,7 @@ export const QUICK_REPLIES: Record<string, QuickReply> = {
   },
   addWidget: {
     tools: [],
-    text: 'どんなウィジェットを追加しますか?よく使われるのは以下です:\n\n- **天気** — 現在地の気温と天気\n- **App Store 評価** — App Store の星評価とトレンド\n- **新着フィードバック** — 直近のユーザーレビュー\n- **パフォーマンス** — クラッシュフリー率と起動時間\n- **タスク** — 進行中のタスク一覧\n\n名前を教えていただくか、「天気を追加して」のようにお伝えください。',
+    text: 'どんなウィジェットを追加しますか?よく使われるのは以下です:\n\n- **天気** — 現在地の気温と天気\n- **App Store 評価** — App Store の星評価とトレンド\n- **新着レビュー** — 直近のユーザーレビュー\n- **パフォーマンス** — クラッシュフリー率と起動時間\n- **タスク** — 進行中のタスク一覧\n\n名前を教えていただくか、「天気を追加して」のようにお伝えください。',
   },
 };
 
