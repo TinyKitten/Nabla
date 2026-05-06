@@ -32,11 +32,14 @@ export interface StoreRatingData {
   breakdown: number[];
 }
 
+export type FeedbackSource = 'appStore' | 'googlePlay';
+
 export interface FeedbackEntry {
   stars: number;
   text: string;
   author: string;
   when: string;
+  source: FeedbackSource;
 }
 
 export interface FeedbackData {

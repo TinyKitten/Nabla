@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { fetchWeather, getCachedWeather } from '../data/weather';
 import { fetchStoreRating, getCachedStoreRating } from '../data/storeRating';
+import { fetchFeedback, getCachedFeedback } from '../data/feedback';
 import type { Message, ToolCall, WidgetType } from '../types';
 
 interface QuickReply {
@@ -27,6 +28,23 @@ async function ratingReply(): Promise<string> {
   }
 }
 
+async function feedbackReply(): Promise<string> {
+  try {
+    const f = getCachedFeedback() ?? (await fetchFeedback());
+    if (f.items.length === 0) {
+      return '新着のストアレビューはありません。';
+    }
+    const ios = f.items.filter((i) => i.source === 'appStore').length;
+    const android = f.items.filter((i) => i.source === 'googlePlay').length;
+    const samples = f.items.slice(0, 3).map((i) => `「${i.text.slice(0, 40)}」`).join('、');
+    const breakdown =
+      ios && android ? `iOS ${ios} 件 / Android ${android} 件` : ios ? `iOS ${ios} 件` : `Android ${android} 件`;
+    return `直近の新着フィードバックは ${f.items.length} 件 (${breakdown})。${samples} など。Issue 化したいものがあれば教えてください。`;
+  } catch {
+    return 'ストアレビューを取得できませんでした。App Store Connect / Google Play Console の接続設定を確認してください。';
+  }
+}
+
 export const QUICK_REPLIES: Record<string, QuickReply> = {
   weather: {
     tools: [{ name: 'get_weather', label: '天気を取得中', icon: 'globe' }],
@@ -40,7 +58,7 @@ export const QUICK_REPLIES: Record<string, QuickReply> = {
   },
   feedback: {
     tools: [{ name: 'fetch_reviews', label: 'レビューを取得中', icon: 'history' }],
-    text: '直近の新着フィードバックは 3 件です。「通勤で毎日使ってます」「中央線の英語表示お願いします」「デザインが綺麗で見やすい!」など。1件は機能要望なので、Issue化しますか?',
+    text: feedbackReply,
     widget: 'feedback',
   },
   perf: {
