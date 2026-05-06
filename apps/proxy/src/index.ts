@@ -41,6 +41,7 @@ async function loadFeedback(): Promise<FeedbackResponse> {
     const snap = await fetchGitHubFeedback();
     const data: FeedbackResponse = {
       items: snap.items,
+      hasMore: snap.hasMore,
       sources: { github: snap.connected },
     };
     cachedFeedback = { data, at: Date.now() };

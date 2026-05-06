@@ -23,13 +23,14 @@ function extractGeminiSummary(body: string | null): string | null {
 
 export interface GitHubFeedbackSnapshot {
   items: FeedbackEntrySnapshot[];
+  hasMore: boolean;
   connected: boolean;
 }
 
 export async function fetchGitHubFeedback(): Promise<GitHubFeedbackSnapshot> {
   const token = process.env.GITHUB_TOKEN;
   if (!token) {
-    return { items: [], connected: false };
+    return { items: [], hasMore: false, connected: false };
   }
 
   const url =
@@ -51,6 +52,7 @@ export async function fetchGitHubFeedback(): Promise<GitHubFeedbackSnapshot> {
     throw new Error(`GitHub Issues ${res.status}: ${await res.text()}`);
   }
 
+  const hasMore = (res.headers.get('link') ?? '').includes('rel="next"');
   const issues = (await res.json()) as GitHubIssue[];
   const items: FeedbackEntrySnapshot[] = issues
     .filter((i) => !i.pull_request)
@@ -64,5 +66,5 @@ export async function fetchGitHubFeedback(): Promise<GitHubFeedbackSnapshot> {
       };
     });
 
-  return { items, connected: true };
+  return { items, hasMore, connected: true };
 }

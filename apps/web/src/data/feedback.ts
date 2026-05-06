@@ -13,6 +13,7 @@ interface FeedbackEntrySnapshot {
 
 interface FeedbackResponse {
   items: FeedbackEntrySnapshot[];
+  hasMore: boolean;
   sources: { github: boolean };
 }
 
@@ -73,7 +74,11 @@ export async function fetchFeedback(): Promise<FeedbackData> {
         throw new Error('github not connected');
       }
       const items = json.items.map(toEntry);
-      const data: FeedbackData = { items, unread: items.length };
+      const data: FeedbackData = {
+        items,
+        unread: items.length,
+        hasMore: json.hasMore,
+      };
       cached = { data, at: Date.now() };
       return data;
     } catch (err) {

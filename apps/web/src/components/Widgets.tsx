@@ -916,7 +916,9 @@ function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData |
             justifyContent: 'center',
           }}
         >
-          <span style={{ fontSize: 32, fontWeight: 500 }}>{data.unread}</span>
+          <span style={{ fontSize: 32, fontWeight: 500 }}>
+            {data.hasMore ? `${data.unread}+` : data.unread}
+          </span>
           <span className="jp-text" style={{ fontSize: 10, color: 'var(--ink-3)' }}>
             未読フィードバック
           </span>
@@ -954,7 +956,9 @@ function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData |
         <div style={{ flex: 1 }} />
         <div className="jp-text" style={{ fontSize: 10, color: 'var(--ink-4)' }}>
           — {top.author}
-          {data.items.length > 1 ? ` · 他 ${data.items.length - 1} 件` : ''}
+          {data.items.length > 1
+            ? ` · 他 ${data.items.length - 1}${data.hasMore ? '+' : ''} 件`
+            : ''}
         </div>
       </>
     );

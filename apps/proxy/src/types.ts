@@ -21,5 +21,6 @@ export interface FeedbackEntrySnapshot {
 
 export interface FeedbackResponse {
   items: FeedbackEntrySnapshot[];
+  hasMore: boolean;
   sources: { github: boolean };
 }
