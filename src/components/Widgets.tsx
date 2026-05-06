@@ -709,6 +709,69 @@ function WeatherWidget({ size, data }: { size: WidgetSize; data: WeatherData | n
   );
 }
 
+function renderStars(rating: number, starSize = 12) {
+  const full = Math.floor(rating);
+  const hasHalf = rating - full >= 0.25 && rating - full < 0.75;
+  const filled = hasHalf ? full : Math.round(rating);
+  const total = 5;
+  return (
+    <span style={{ display: 'inline-flex', gap: 1, color: 'var(--accent)' }}>
+      {Array.from({ length: total }).map((_, i) => {
+        if (i < filled) {
+          return (
+            <svg
+              key={i}
+              width={starSize}
+              height={starSize}
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              style={{ display: 'block' }}
+            >
+              <path d="M12 3l2.7 6.3L21 10l-5 4.6 1.5 6.4L12 17.8 6.5 21 8 14.6 3 10l6.3-.7z" />
+            </svg>
+          );
+        }
+        if (i === filled && hasHalf) {
+          const id = 'half-' + starSize;
+          return (
+            <svg
+              key={i}
+              width={starSize}
+              height={starSize}
+              viewBox="0 0 24 24"
+              style={{ display: 'block' }}
+            >
+              <defs>
+                <linearGradient id={id}>
+                  <stop offset="50%" stopColor="currentColor" />
+                  <stop offset="50%" stopColor="currentColor" stopOpacity="0.22" />
+                </linearGradient>
+              </defs>
+              <path
+                d="M12 3l2.7 6.3L21 10l-5 4.6 1.5 6.4L12 17.8 6.5 21 8 14.6 3 10l6.3-.7z"
+                fill={`url(#${id})`}
+              />
+            </svg>
+          );
+        }
+        return (
+          <svg
+            key={i}
+            width={starSize}
+            height={starSize}
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            fillOpacity="0.22"
+            style={{ display: 'block' }}
+          >
+            <path d="M12 3l2.7 6.3L21 10l-5 4.6 1.5 6.4L12 17.8 6.5 21 8 14.6 3 10l6.3-.7z" />
+          </svg>
+        );
+      })}
+    </span>
+  );
+}
+
 function StoreRatingWidget({
   size,
   data,
@@ -717,68 +780,6 @@ function StoreRatingWidget({
   data: StoreRatingData | null;
 }) {
   if (!data) return <Skeleton size={size} />;
-  const renderStars = (rating: number, starSize = 12) => {
-    const full = Math.floor(rating);
-    const hasHalf = rating - full >= 0.25 && rating - full < 0.75;
-    const filled = hasHalf ? full : Math.round(rating);
-    const total = 5;
-    return (
-      <span style={{ display: 'inline-flex', gap: 1, color: 'var(--accent)' }}>
-        {Array.from({ length: total }).map((_, i) => {
-          if (i < filled) {
-            return (
-              <svg
-                key={i}
-                width={starSize}
-                height={starSize}
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                style={{ display: 'block' }}
-              >
-                <path d="M12 3l2.7 6.3L21 10l-5 4.6 1.5 6.4L12 17.8 6.5 21 8 14.6 3 10l6.3-.7z" />
-              </svg>
-            );
-          }
-          if (i === filled && hasHalf) {
-            const id = 'half-' + starSize;
-            return (
-              <svg
-                key={i}
-                width={starSize}
-                height={starSize}
-                viewBox="0 0 24 24"
-                style={{ display: 'block' }}
-              >
-                <defs>
-                  <linearGradient id={id}>
-                    <stop offset="50%" stopColor="currentColor" />
-                    <stop offset="50%" stopColor="currentColor" stopOpacity="0.22" />
-                  </linearGradient>
-                </defs>
-                <path
-                  d="M12 3l2.7 6.3L21 10l-5 4.6 1.5 6.4L12 17.8 6.5 21 8 14.6 3 10l6.3-.7z"
-                  fill={`url(#${id})`}
-                />
-              </svg>
-            );
-          }
-          return (
-            <svg
-              key={i}
-              width={starSize}
-              height={starSize}
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              fillOpacity="0.22"
-              style={{ display: 'block' }}
-            >
-              <path d="M12 3l2.7 6.3L21 10l-5 4.6 1.5 6.4L12 17.8 6.5 21 8 14.6 3 10l6.3-.7z" />
-            </svg>
-          );
-        })}
-      </span>
-    );
-  };
   if (size === 'sm') {
     return (
       <>
@@ -927,9 +928,12 @@ function StoreRatingWidget({
   );
 }
 
+function starsText(n: number) {
+  return '★'.repeat(n) + '☆'.repeat(5 - n);
+}
+
 function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData | null }) {
   if (!data) return <Skeleton size={size} />;
-  const stars = (n: number) => '★'.repeat(n) + '☆'.repeat(5 - n);
   if (size === 'sm') {
     return (
       <>
@@ -955,7 +959,7 @@ function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData |
       <>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
           <span style={{ color: 'var(--accent)', fontSize: 11, letterSpacing: '0.04em' }}>
-            {stars(top.stars)}
+            {starsText(top.stars)}
           </span>
           <span style={{ fontSize: 10, color: 'var(--ink-4)' }}>{top.when}</span>
         </div>
@@ -992,7 +996,7 @@ function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData |
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
             <span style={{ color: 'var(--accent)', fontSize: 10, letterSpacing: '0.05em' }}>
-              {stars(it.stars)}
+              {starsText(it.stars)}
             </span>
             <span style={{ fontSize: 10, color: 'var(--ink-4)' }}>· {it.when}</span>
           </div>

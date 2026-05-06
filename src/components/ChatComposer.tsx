@@ -6,6 +6,9 @@ interface VoiceOverlayProps {
   onCancel: () => void;
 }
 
+const fmtSeconds = (s: number) =>
+  `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
+
 function VoiceOverlay({ onCommit, onCancel }: VoiceOverlayProps) {
   const [seconds, setSeconds] = useState(0);
   const [transcript, setTranscript] = useState('');
@@ -29,9 +32,6 @@ function VoiceOverlay({ onCommit, onCancel }: VoiceOverlayProps) {
     }, 700);
     return () => window.clearInterval(interval);
   }, []);
-  const fmt = (s: number) =>
-    `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
-
   return (
     <div
       style={{
@@ -96,7 +96,7 @@ function VoiceOverlay({ onCommit, onCancel }: VoiceOverlayProps) {
               animation: 'pulse 1.2s ease-in-out infinite',
             }}
           />
-          録音中 · {fmt(seconds)}
+          録音中 · {fmtSeconds(seconds)}
         </div>
       </div>
       <button className="btn-icon" title="キャンセル" onClick={onCancel}>

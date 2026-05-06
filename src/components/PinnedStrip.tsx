@@ -3,6 +3,15 @@ import { Icon } from './Icon';
 import { Widget } from './Widgets';
 import type { WidgetItem, WidgetType } from '../types';
 
+function computeIdxFromX(e: DragEvent, container: Element) {
+  const items = Array.from(container.querySelectorAll('[data-pinned-item]'));
+  for (let i = 0; i < items.length; i++) {
+    const r = items[i].getBoundingClientRect();
+    if (e.clientX < r.left + r.width / 2) return i;
+  }
+  return items.length;
+}
+
 function DropIndicator() {
   return (
     <div
@@ -52,15 +61,6 @@ export function PinnedStrip({
     return () => window.removeEventListener('resize', onResize);
   }, []);
   const pinnedTypes = useMemo(() => widgets.map((w) => w.type), [widgets]);
-
-  const computeIdxFromX = (e: DragEvent, container: Element) => {
-    const items = Array.from(container.querySelectorAll('[data-pinned-item]'));
-    for (let i = 0; i < items.length; i++) {
-      const r = items[i].getBoundingClientRect();
-      if (e.clientX < r.left + r.width / 2) return i;
-    }
-    return items.length;
-  };
 
   const containerOnDragOver = (e: DragEvent<HTMLDivElement>) => {
     const types = e.dataTransfer.types;
