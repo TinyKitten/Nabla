@@ -8,6 +8,8 @@ interface Coords {
 }
 
 const FALLBACK: Coords = { lat: 35.6812, lon: 139.7671, fallbackLabel: '東京駅' };
+const FETCH_TIMEOUT_MS = 8000;
+const CACHE_TTL_MS = 5 * 60 * 1000;
 
 interface OpenWeatherCurrent {
   main: { temp: number; feels_like: number };
@@ -31,14 +33,17 @@ interface OpenWeatherGeoResult {
   country?: string;
 }
 
+let cachedWeather: { data: WeatherData; at: number } | null = null;
+
 async function reverseGeocode(
   lat: number,
   lon: number,
   apiKey: string,
+  signal: AbortSignal,
 ): Promise<OpenWeatherGeoResult | null> {
   try {
     const url = `https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=5&appid=${apiKey}`;
-    const results = await fetchJson<OpenWeatherGeoResult[]>(url);
+    const results = await fetchJson<OpenWeatherGeoResult[]>(url, signal);
     if (!results.length) return null;
     const withJa = results.find((r) => r.local_names?.ja);
     return withJa ?? results[0];
@@ -68,10 +73,16 @@ function getCoords(): Promise<Coords> {
   });
 }
 
-async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url);
+async function fetchJson<T>(url: string, signal: AbortSignal): Promise<T> {
+  const res = await fetch(url, { signal });
   if (!res.ok) throw new Error(`OpenWeather request failed: ${res.status}`);
   return (await res.json()) as T;
+}
+
+export function getCachedWeather(maxAgeMs = CACHE_TTL_MS): WeatherData | null {
+  if (!cachedWeather) return null;
+  if (Date.now() - cachedWeather.at > maxAgeMs) return null;
+  return cachedWeather.data;
 }
 
 export async function fetchWeather(): Promise<WeatherData> {
@@ -80,17 +91,20 @@ export async function fetchWeather(): Promise<WeatherData> {
     setToolConnected('openWeather', false);
     throw new Error('VITE_OPENWEATHER_API_KEY is not set');
   }
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
   try {
     const coords = await getCoords();
     const base = 'https://api.openweathermap.org/data/2.5';
     const q = `lat=${coords.lat}&lon=${coords.lon}&appid=${apiKey}&units=metric&lang=ja`;
     const [current, forecast, geo] = await Promise.all([
-      fetchJson<OpenWeatherCurrent>(`${base}/weather?${q}`),
-      fetchJson<OpenWeatherForecast>(`${base}/forecast?${q}`),
-      reverseGeocode(coords.lat, coords.lon, apiKey),
+      fetchJson<OpenWeatherCurrent>(`${base}/weather?${q}`, ctrl.signal),
+      fetchJson<OpenWeatherForecast>(`${base}/forecast?${q}`, ctrl.signal),
+      reverseGeocode(coords.lat, coords.lon, apiKey, ctrl.signal),
     ]);
-    const hourly = forecast.list.slice(0, 8).map((it) => Math.round(it.main.temp));
-    const precip = Math.round((forecast.list[0]?.pop ?? 0) * 100);
+    const next8 = forecast.list.slice(0, 8);
+    const hourly = next8.map((it) => Math.round(it.main.temp));
+    const precip = Math.round(Math.max(0, ...next8.map((it) => it.pop ?? 0)) * 100);
     const data: WeatherData = {
       location: formatLocation(geo, current.name || coords.fallbackLabel || '現在地'),
       temp: Math.round(current.main.temp),
@@ -99,10 +113,13 @@ export async function fetchWeather(): Promise<WeatherData> {
       hourly,
       precip,
     };
+    cachedWeather = { data, at: Date.now() };
     setToolConnected('openWeather', true);
     return data;
   } catch (err) {
     setToolConnected('openWeather', false);
     throw err;
+  } finally {
+    clearTimeout(timer);
   }
 }

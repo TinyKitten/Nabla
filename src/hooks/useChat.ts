@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { fetchWeather } from '../data/weather';
+import { fetchWeather, getCachedWeather } from '../data/weather';
 import type { Message, ToolCall, WidgetType } from '../types';
 
 interface QuickReply {
@@ -10,7 +10,7 @@ interface QuickReply {
 
 async function weatherReply(): Promise<string> {
   try {
-    const w = await fetchWeather();
+    const w = getCachedWeather() ?? (await fetchWeather());
     return `${w.location}は現在 ${w.temp}°、${w.cond}です。体感は ${w.feels}° で、降水確率は ${w.precip}%。`;
   } catch {
     return '天気情報を取得できませんでした。OpenWeather の接続設定を確認してください。';
@@ -96,16 +96,22 @@ export function useChat(initialMessages: Message[] = []) {
         let tools: ToolCall[] = [];
 
         if (canned) {
-          for (const tool of canned.tools) {
+          const replyPromise: Promise<string> =
+            typeof canned.text === 'function' ? canned.text() : Promise.resolve(canned.text);
+          for (let idx = 0; idx < canned.tools.length; idx++) {
             if (streamRef.current !== aiId) return;
+            const tool = canned.tools[idx];
             tools.push({ ...tool, status: 'running' });
             setMessages((prev) =>
               prev.map((m) => (m.id === aiId ? { ...m, tools: [...tools] } : m)),
             );
             await new Promise((r) => setTimeout(r, 700 + Math.random() * 600));
-            tools[tools.length - 1].status = 'done';
+            if (idx === canned.tools.length - 1) {
+              reply = await replyPromise;
+            }
+            tools[idx].status = 'done';
           }
-          reply = typeof canned.text === 'string' ? canned.text : await canned.text();
+          if (canned.tools.length === 0) reply = await replyPromise;
           widget = canned.widget;
         } else {
           tools = [{ name: 'thinking', label: '考え中', icon: 'sparkle', status: 'running' }];
