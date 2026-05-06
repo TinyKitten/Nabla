@@ -1,11 +1,10 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { fetchAppStoreReviews } from './appStore.js';
-import { fetchGooglePlayReviews } from './googlePlay.js';
+import { fetchAppStore } from './appStore.js';
 import { aggregate } from './aggregate.js';
-import type { StoreRatingResponse, StoreSnapshot } from './types.js';
+import type { StoreRatingResponse } from './types.js';
 
 const PORT = Number(process.env.PROXY_PORT ?? 5174);
-const CACHE_TTL_MS = 5 * 60 * 1000;
+const CACHE_TTL_MS = 30 * 60 * 1000;
 
 let cached: { data: StoreRatingResponse; at: number } | null = null;
 let inFlight: Promise<StoreRatingResponse> | null = null;
@@ -14,20 +13,8 @@ async function loadStoreRating(): Promise<StoreRatingResponse> {
   if (cached && Date.now() - cached.at < CACHE_TTL_MS) return cached.data;
   if (inFlight) return inFlight;
   inFlight = (async () => {
-    const settled = await Promise.allSettled<StoreSnapshot>([
-      fetchAppStoreReviews(),
-      fetchGooglePlayReviews(),
-    ]);
-    const ok: StoreSnapshot[] = [];
-    for (const r of settled) {
-      if (r.status === 'fulfilled') {
-        ok.push(r.value);
-      } else {
-        console.error('[store-rating] source failed:', r.reason);
-      }
-    }
-    if (ok.length === 0) throw new Error('all store-rating sources failed');
-    const data = aggregate(ok);
+    const snap = await fetchAppStore();
+    const data = aggregate(snap);
     cached = { data, at: Date.now() };
     return data;
   })();

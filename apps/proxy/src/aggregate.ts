@@ -1,4 +1,5 @@
-import type { ReviewSample, StoreRatingResponse, StoreSnapshot } from './types.js';
+import type { AppStoreSnapshot } from './appStore.js';
+import type { ReviewSample, StoreRatingResponse } from './types.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -8,7 +9,7 @@ function startOfDay(ts: number): number {
   return d.getTime();
 }
 
-function buildTrend(reviews: ReviewSample[]): number[] {
+function buildTrend(reviews: ReviewSample[], fallback: number): number[] {
   const todayStart = startOfDay(Date.now());
   const buckets: { sum: number; count: number }[] = Array.from({ length: 7 }, () => ({
     sum: 0,
@@ -22,14 +23,7 @@ function buildTrend(reviews: ReviewSample[]): number[] {
       buckets[idx].count += 1;
     }
   }
-  let lastKnown = 0;
-  let total = 0;
-  let totalCount = 0;
-  for (const r of reviews) {
-    total += r.rating;
-    totalCount += 1;
-  }
-  if (totalCount > 0) lastKnown = total / totalCount;
+  let lastKnown = fallback;
   return buckets.map((b) => {
     if (b.count > 0) {
       lastKnown = b.sum / b.count;
@@ -55,22 +49,13 @@ function buildDelta(reviews: ReviewSample[]): string {
   return `+${recent} 今週`;
 }
 
-export function aggregate(snapshots: StoreSnapshot[]): StoreRatingResponse {
-  const all = snapshots.flatMap((s) => s.reviews);
-  const reviews = all.length;
-  const stars =
-    reviews === 0
-      ? 0
-      : Number((all.reduce((a, r) => a + r.rating, 0) / reviews).toFixed(1));
+export function aggregate(snap: AppStoreSnapshot): StoreRatingResponse {
   return {
-    stars,
-    reviews,
-    delta: buildDelta(all),
-    trend: buildTrend(all),
-    breakdown: buildBreakdown(all),
-    sources: {
-      appStore: snapshots.some((s) => s.source === 'appStore'),
-      googlePlay: snapshots.some((s) => s.source === 'googlePlay'),
-    },
+    stars: Number(snap.globalAverage.toFixed(1)),
+    reviews: snap.globalCount,
+    delta: buildDelta(snap.textReviews),
+    trend: buildTrend(snap.textReviews, snap.globalAverage),
+    breakdown: buildBreakdown(snap.textReviews),
+    sources: { appStore: true },
   };
 }

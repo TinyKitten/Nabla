@@ -9,8 +9,7 @@ interface ToolEntry {
 
 const TOOLS: ToolEntry[] = [
   { key: 'openWeather', name: 'OpenWeather', desc: '天気予報' },
-  { key: 'appStoreConnect', name: 'App Store Connect', desc: 'iOS レビュー' },
-  { key: 'googlePlay', name: 'Google Play', desc: 'Android レビュー' },
+  { key: 'appStoreConnect', name: 'App Store Connect', desc: 'iOS 評価' },
 ];
 
 const COLOR_CONNECTED = '#22c55e';

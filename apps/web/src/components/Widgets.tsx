@@ -36,7 +36,7 @@ export const WIDGET_DEFS: Record<WidgetType, WidgetDef> = {
     fetch: fetchWeather,
   },
   storeRating: {
-    title: 'TrainLCD · ストア評価',
+    title: 'TrainLCD · App Store 評価',
     icon: 'star-line',
     fetch: fetchStoreRating,
   },

@@ -34,15 +34,18 @@ A floating **Tweaks** button toggles light/dark mode and the accent color.
 - Plain CSS variables (no CSS-in-JS, no Tailwind)
 - HTML5 drag-and-drop for widget reordering and pinning
 - Widget data is mocked client-side, **except weather** (browser-direct to
-  OpenWeather using geolocation with a Tokyo Station fallback) and **store
-  rating** (App Store Connect + Google Play, fetched via a tiny local proxy
-  that holds the credentials so the browser never sees them). The remaining
-  three — feedback, performance, tasks — are still mocked and will be wired up
-  as Issues #3–#5 progress, eventually behind an MCP-style tool layer
-  ("OpenClaw").
+  OpenWeather using geolocation with a Tokyo Station fallback) and **App Store
+  rating** (iTunes Lookup across ~155 storefronts for the headline number plus
+  the App Store Connect Customer Reviews API for trend / breakdown / delta —
+  all fetched via a tiny local proxy that holds the JWT key so the browser
+  never sees it). Google Play is intentionally out of scope: there is no
+  official aggregate-ratings API and we do not scrape the public store page.
+  The remaining three — feedback, performance, tasks — are still mocked and
+  will be wired up as Issues #3–#5 progress, eventually behind an MCP-style
+  tool layer ("OpenClaw").
 - Header `ToolsBadge` reflects which MCP tools are actually connected via a
   small `useSyncExternalStore` in `apps/web/src/state/toolConnections.ts`.
-  Today: `openWeather`, `appStoreConnect`, `googlePlay`.
+  Today: `openWeather`, `appStoreConnect`.
 
 ## Running it
 
@@ -73,8 +76,6 @@ APP_STORE_CONNECT_KEY_ID=...
 APP_STORE_CONNECT_ISSUER_ID=...
 APP_STORE_CONNECT_PRIVATE_KEY_PATH=./keys/AuthKey_XXXXXX.p8
 APP_STORE_CONNECT_APP_ID=...
-GOOGLE_PLAY_PACKAGE_NAME=me.tinykitten.trainlcd
-GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_PATH=./keys/play-service-account.json
 ```
 
 Missing keys → the affected widget shows a skeleton and the header reports the
@@ -89,6 +90,6 @@ in this repo.
 
 ## Status
 
-Personal, in-progress. Two widgets (weather, store rating) are connected to
-real sources; the other three are still mocked. Expect rough edges and
+Personal, in-progress. Two widgets (weather, App Store rating) are connected
+to real sources; the other three are still mocked. Expect rough edges and
 opinionated decisions that only make sense for me.

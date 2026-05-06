@@ -1,11 +1,11 @@
 import type { StoreRatingData } from '../types';
 import { setToolConnected } from '../state/toolConnections';
 
-const FETCH_TIMEOUT_MS = 10_000;
-const CACHE_TTL_MS = 5 * 60 * 1000;
+const FETCH_TIMEOUT_MS = 30_000;
+const CACHE_TTL_MS = 30 * 60 * 1000;
 
 interface StoreRatingResponse extends StoreRatingData {
-  sources: { appStore: boolean; googlePlay: boolean };
+  sources: { appStore: boolean };
 }
 
 let cached: { data: StoreRatingData; at: number } | null = null;
@@ -28,17 +28,14 @@ export async function fetchStoreRating(): Promise<StoreRatingData> {
       const res = await fetch('/api/store-rating', { signal: ctrl.signal });
       if (!res.ok) {
         setToolConnected('appStoreConnect', false);
-        setToolConnected('googlePlay', false);
         throw new Error(`store-rating proxy ${res.status}`);
       }
       const { sources, ...data } = (await res.json()) as StoreRatingResponse;
       cached = { data, at: Date.now() };
       setToolConnected('appStoreConnect', sources.appStore);
-      setToolConnected('googlePlay', sources.googlePlay);
       return data;
     } catch (err) {
       setToolConnected('appStoreConnect', false);
-      setToolConnected('googlePlay', false);
       throw err;
     } finally {
       clearTimeout(timer);

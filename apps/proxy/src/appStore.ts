@@ -1,10 +1,12 @@
 import { readFileSync } from 'node:fs';
 import jwt from 'jsonwebtoken';
-import type { ReviewSample, StoreSnapshot } from './types.js';
+import { APPLE_STOREFRONTS } from './storefronts.js';
+import type { ReviewSample } from './types.js';
 
 const TOKEN_TTL_SECONDS = 60 * 15;
 const PAGE_LIMIT = 200;
 const MAX_PAGES = 5;
+const LOOKUP_CONCURRENCY = 10;
 
 interface CachedToken {
   token: string;
@@ -58,9 +60,7 @@ interface ReviewPage {
   links?: { next?: string };
 }
 
-export async function fetchAppStoreReviews(): Promise<StoreSnapshot> {
-  const appId = process.env.APP_STORE_CONNECT_APP_ID;
-  if (!appId) throw new Error('APP_STORE_CONNECT_APP_ID not set');
+async function fetchTextReviews(appId: string): Promise<ReviewSample[]> {
   const token = getToken();
   const reviews: ReviewSample[] = [];
   let url: string | undefined =
@@ -80,5 +80,66 @@ export async function fetchAppStoreReviews(): Promise<StoreSnapshot> {
     }
     url = json.links?.next;
   }
-  return { source: 'appStore', reviews };
+  return reviews;
+}
+
+interface LookupResult {
+  userRatingCount?: number;
+  averageUserRating?: number;
+}
+
+interface LookupResponse {
+  resultCount: number;
+  results: LookupResult[];
+}
+
+async function lookupOne(appId: string, country: string): Promise<LookupResult | null> {
+  const url = `https://itunes.apple.com/lookup?id=${appId}&country=${country}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const json = (await res.json()) as LookupResponse;
+    return json.resultCount > 0 ? json.results[0] : null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchGlobalAggregate(appId: string): Promise<{ count: number; average: number }> {
+  let totalCount = 0;
+  let weightedStars = 0;
+  for (let i = 0; i < APPLE_STOREFRONTS.length; i += LOOKUP_CONCURRENCY) {
+    const batch = APPLE_STOREFRONTS.slice(i, i + LOOKUP_CONCURRENCY);
+    const results = await Promise.all(batch.map((c) => lookupOne(appId, c)));
+    for (const r of results) {
+      const c = r?.userRatingCount ?? 0;
+      const a = r?.averageUserRating ?? 0;
+      if (c > 0) {
+        totalCount += c;
+        weightedStars += a * c;
+      }
+    }
+  }
+  const average = totalCount > 0 ? weightedStars / totalCount : 0;
+  return { count: totalCount, average };
+}
+
+export interface AppStoreSnapshot {
+  globalCount: number;
+  globalAverage: number;
+  textReviews: ReviewSample[];
+}
+
+export async function fetchAppStore(): Promise<AppStoreSnapshot> {
+  const appId = process.env.APP_STORE_CONNECT_APP_ID;
+  if (!appId) throw new Error('APP_STORE_CONNECT_APP_ID not set');
+  const [aggregate, textReviews] = await Promise.all([
+    fetchGlobalAggregate(appId),
+    fetchTextReviews(appId),
+  ]);
+  return {
+    globalCount: aggregate.count,
+    globalAverage: aggregate.average,
+    textReviews,
+  };
 }
