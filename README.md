@@ -33,9 +33,14 @@ A floating **Tweaks** button toggles light/dark mode and the accent color.
 - [Oxlint](https://oxc.rs/docs/guide/usage/linter.html) for fast linting
 - Plain CSS variables (no CSS-in-JS, no Tailwind)
 - HTML5 drag-and-drop for widget reordering and pinning
-- All widget data is currently mocked client-side; the eventual plan is to wire
-  it through an MCP-style tool layer ("OpenClaw") so the chat triggers real
-  fetches behind the scenes.
+- Widget data is mocked client-side, **except weather** which now hits the
+  OpenWeather API directly using browser geolocation (with a Tokyo Station
+  fallback). The other four widgets — store rating, feedback, performance,
+  tasks — are still mocked and will be wired up as Issues #2–#5 progress,
+  eventually behind an MCP-style tool layer ("OpenClaw").
+- Header `ToolsBadge` reflects which MCP tools are actually connected via a
+  small `useSyncExternalStore` in `src/state/toolConnections.ts`. Today only
+  OpenWeather flips to "connected" once the first fetch succeeds.
 
 ## Running it
 
@@ -48,6 +53,16 @@ npm run lint         # oxlint
 npm run lint:fix     # oxlint --fix
 ```
 
+To enable the live weather widget, drop a free
+[OpenWeather](https://openweathermap.org/api) API key into `.env.local`:
+
+```
+VITE_OPENWEATHER_API_KEY=...
+```
+
+Without it, the weather widget shows a skeleton and the header reports
+OpenWeather as disconnected — that's the intended fallback.
+
 ## Origin
 
 The visual design was prototyped in [Claude Design](https://claude.ai/design)
@@ -57,5 +72,6 @@ in this repo.
 
 ## Status
 
-Personal, in-progress. Expect rough edges, hardcoded sample data, and
-opinionated decisions that only make sense for me.
+Personal, in-progress. Most widgets still show mocked data; weather is the
+first to be connected to a real source. Expect rough edges and opinionated
+decisions that only make sense for me.

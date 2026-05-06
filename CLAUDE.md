@@ -45,10 +45,15 @@ The drop target inspects `dataTransfer.types` to decide what to do:
 
 The grid panel itself is also a drop target — dropping a pinned widget there unpins it.
 
-**3. `useChat` is fake.**
-`src/hooks/useChat.ts` matches user input against `QUICK_REPLIES` (regex intent detection: 天気/評価/フィードバック/パフォーマンス/ウィジェット追加), runs simulated tool calls with timeouts, then character-streams the canned reply. There is no model call. `WIDGET_DEFS[type].fetch()` is also stubbed — it returns mock data with light randomness on each refresh.
+**3. `useChat` is fake — mostly.**
+`src/hooks/useChat.ts` matches user input against `QUICK_REPLIES` (regex intent detection: 天気/評価/フィードバック/パフォーマンス/ウィジェット追加), runs simulated tool calls with timeouts, then character-streams the canned reply. There is no model call. Each canned `text` can be a static string or an async function — the `weather` reply is the latter and pulls from `getCachedWeather()` / `fetchWeather()` so it stays in sync with what the widget shows.
 
-The eventual plan, per the design intent, is an MCP-style tool layer ("OpenClaw") wired in behind the chat. Until then, anything that *looks* like an API call is a setTimeout.
+Most `WIDGET_DEFS[type].fetch()` are stubbed and return mock data with light randomness; the **weather widget is the only one connected to a real source today** (`src/data/weather.ts` → OpenWeather). The other four (`storeRating`, `feedback`, `performance`, `tasks`) are still mocked and tracked by Issues #2–#5.
+
+The eventual plan, per the design intent, is an MCP-style tool layer ("OpenClaw") wired in behind the chat. Until each widget moves over, anything *not* under `src/data/` that looks like an API call is a `setTimeout`.
+
+**4. Tool connection state.**
+`src/state/toolConnections.ts` is a `useSyncExternalStore`-backed module keyed by MCP tool name (`github` / `appStoreConnect` / `googleCalendar` / `openWeather` / `linear`). `ToolsBadge` derives its count and per-tool dot colors from this store. Real data fetchers in `src/data/` are responsible for calling `setToolConnected(name, true|false)` on success / failure. Today only `openWeather` ever flips to `true`.
 
 ## Component map (only the non-obvious parts)
 
@@ -59,8 +64,9 @@ The eventual plan, per the design intent, is an MCP-style tool layer ("OpenClaw"
 
 ## Conventions
 
-- **Strict TypeScript.** All `.ts` / `.tsx`, `tsconfig.app.json` has `strict`, `noUnusedLocals`, `noUnusedParameters`. Shared types live in `src/types.ts`. Window augmentations (the `__dragging*` globals) are in `src/global.d.ts`.
+- **Strict TypeScript.** All `.ts` / `.tsx`, `tsconfig.app.json` has `strict`, `noUnusedLocals`, `noUnusedParameters`. Shared types live in `src/types.ts`. Window augmentations (the `__dragging*` globals) are in `src/global.d.ts`; Vite env-var typing (e.g. `VITE_OPENWEATHER_API_KEY`) is in `src/vite-env.d.ts`.
 - **Inline styles, not CSS-in-JS.** Theming is via CSS variables defined in `src/styles/base.css` (`--accent`, `--ink`, `--bg-elev`, etc.) plus `[data-theme="dark"]` overrides. Don't pull in styled-components / Tailwind / CSS modules.
 - **Oxlint with default rules only.** `.oxlintrc.json` is intentionally near-empty (just `$schema` + `ignorePatterns`). **Do not add plugins or `rules` overrides without explicit user agreement.** A previous setup added react-perf / unicorn / jsx-a11y plugins and then needed many `"off"` overrides to silence false positives — that churn is what we're avoiding.
 - **Japanese UI strings.** Most user-facing copy is Japanese. Match the existing tone (です/ます). Code comments and identifiers stay English.
 - **Don't restore removed variants.** `variant-d`, `variant-e`, `layout-timeline`, `layout-workbench`, `design-canvas` from the original design bundle were intentionally not ported.
+- **Local secrets in `.env.local`.** API keys for connected widgets (currently only `VITE_OPENWEATHER_API_KEY`) live in `.env.local` — Vite's standard local-only env file, which should stay out of git. Type any new key in `src/vite-env.d.ts`. Missing key → the widget shows skeleton and its tool stays disconnected; that's the intended fallback, not a bug.
