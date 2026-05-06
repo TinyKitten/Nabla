@@ -35,6 +35,7 @@ function localizeCondition(id: number | undefined, fallback: string): string {
 }
 
 interface OpenWeatherForecastItem {
+  dt: number;
   main: { temp: number };
   pop?: number;
 }
@@ -120,7 +121,7 @@ export async function fetchWeather(): Promise<WeatherData> {
       reverseGeocode(coords.lat, coords.lon, apiKey, ctrl.signal),
     ]);
     const next8 = forecast.list.slice(0, 8);
-    const hourly = next8.map((it) => Math.round(it.main.temp));
+    const hourly = next8.map((it) => ({ temp: Math.round(it.main.temp), at: it.dt }));
     const precip = Math.round(Math.max(0, ...next8.map((it) => it.pop ?? 0)) * 100);
     const data: WeatherData = {
       location: formatLocation(geo, current.name || coords.fallbackLabel || '現在地'),
