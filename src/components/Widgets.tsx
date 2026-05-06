@@ -7,6 +7,7 @@ import {
   useState,
 } from 'react';
 import { Icon } from './Icon';
+import { fetchWeather } from '../data/weather';
 import type {
   DragHandleProps,
   FeedbackData,
@@ -30,14 +31,7 @@ export const WIDGET_DEFS: Record<WidgetType, WidgetDef> = {
   weather: {
     title: '天気',
     icon: 'cloud-sun',
-    fetch: async (): Promise<WeatherData> => ({
-      location: '東京・渋谷',
-      temp: 18 + Math.round(Math.random() * 4 - 2),
-      feels: 17,
-      cond: ['晴れ', '曇り', '晴れ時々曇り'][Math.floor(Math.random() * 3)],
-      hourly: [16, 17, 18, 19, 19, 18, 17, 16].map((t) => t + Math.round(Math.random() * 2)),
-      precip: 10,
-    }),
+    fetch: fetchWeather,
   },
   storeRating: {
     title: 'TrainLCD · ストア評価',
@@ -149,9 +143,13 @@ export function useWidget(type: WidgetType, intervalSec: number) {
   const refresh = useCallback(async () => {
     const def = WIDGET_DEFS[type];
     if (!def) return;
-    const d = await def.fetch();
-    setData(d);
-    setLastRefresh(new Date());
+    try {
+      const d = await def.fetch();
+      setData(d);
+      setLastRefresh(new Date());
+    } catch (err) {
+      console.warn(`[widget:${type}] fetch failed`, err);
+    }
   }, [type]);
 
   useEffect(() => {

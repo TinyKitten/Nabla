@@ -1,16 +1,26 @@
 import { useCallback, useRef, useState } from 'react';
+import { fetchWeather } from '../data/weather';
 import type { Message, ToolCall, WidgetType } from '../types';
 
 interface QuickReply {
   tools: ToolCall[];
-  text: string;
+  text: string | (() => Promise<string>);
   widget?: WidgetType;
+}
+
+async function weatherReply(): Promise<string> {
+  try {
+    const w = await fetchWeather();
+    return `${w.location}は現在 ${w.temp}°、${w.cond}です。体感は ${w.feels}° で、降水確率は ${w.precip}%。`;
+  } catch {
+    return '天気情報を取得できませんでした。OpenWeather の接続設定を確認してください。';
+  }
 }
 
 export const QUICK_REPLIES: Record<string, QuickReply> = {
   weather: {
     tools: [{ name: 'get_weather', label: '天気を取得中', icon: 'globe' }],
-    text: '東京・渋谷は現在 18°、晴れ時々曇りです。体感は 17° で、降水確率は 10%。夕方にかけて少し雲が増えますが、雨の心配はなさそうです。',
+    text: weatherReply,
     widget: 'weather',
   },
   rating: {
@@ -95,7 +105,7 @@ export function useChat(initialMessages: Message[] = []) {
             await new Promise((r) => setTimeout(r, 700 + Math.random() * 600));
             tools[tools.length - 1].status = 'done';
           }
-          reply = canned.text;
+          reply = typeof canned.text === 'string' ? canned.text : await canned.text();
           widget = canned.widget;
         } else {
           tools = [{ name: 'thinking', label: '考え中', icon: 'sparkle', status: 'running' }];

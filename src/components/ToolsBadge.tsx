@@ -1,20 +1,28 @@
 import { useState } from 'react';
+import { useToolConnections, type ToolName } from '../state/toolConnections';
 
 interface ToolEntry {
+  key: ToolName;
   name: string;
   desc: string;
 }
 
 const TOOLS: ToolEntry[] = [
-  { name: 'GitHub', desc: 'リポジトリ・PR・Issue' },
-  { name: 'App Store Connect', desc: 'レビュー・売上データ' },
-  { name: 'Google Calendar', desc: '予定の閲覧' },
-  { name: 'OpenWeather', desc: '天気予報' },
-  { name: 'Linear', desc: 'タスク・スプリント管理' },
+  { key: 'github', name: 'GitHub', desc: 'リポジトリ・PR・Issue' },
+  { key: 'appStoreConnect', name: 'App Store Connect', desc: 'レビュー・売上データ' },
+  { key: 'googleCalendar', name: 'Google Calendar', desc: '予定の閲覧' },
+  { key: 'openWeather', name: 'OpenWeather', desc: '天気予報' },
+  { key: 'linear', name: 'Linear', desc: 'タスク・スプリント管理' },
 ];
+
+const COLOR_CONNECTED = '#22c55e';
+const COLOR_DISCONNECTED = 'var(--ink-5)';
 
 export function ToolsBadge() {
   const [open, setOpen] = useState(false);
+  const conns = useToolConnections();
+  const connectedCount = TOOLS.filter((t) => conns[t.key]).length;
+  const anyConnected = connectedCount > 0;
   return (
     <div
       onMouseEnter={() => setOpen(true)}
@@ -30,8 +38,15 @@ export function ToolsBadge() {
         cursor: 'default',
       }}
     >
-      <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#22c55e' }} />
-      <span>5 ツール接続中 · 自動更新</span>
+      <span
+        style={{
+          width: 5,
+          height: 5,
+          borderRadius: '50%',
+          background: anyConnected ? COLOR_CONNECTED : COLOR_DISCONNECTED,
+        }}
+      />
+      <span>{connectedCount} ツール接続中 · 自動更新</span>
       {open && (
         <div
           role="tooltip"
@@ -59,34 +74,40 @@ export function ToolsBadge() {
           >
             接続中の MCP ツール
           </div>
-          {TOOLS.map((t) => (
-            <div
-              key={t.name}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '5px 12px',
-              }}
-            >
-              <span
+          {TOOLS.map((t) => {
+            const connected = conns[t.key];
+            return (
+              <div
+                key={t.key}
                 style={{
-                  width: 5,
-                  height: 5,
-                  borderRadius: '50%',
-                  background: '#22c55e',
-                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '5px 12px',
+                  opacity: connected ? 1 : 0.55,
                 }}
-              />
-              <span style={{ fontSize: 12, color: 'var(--ink-2)', fontWeight: 500 }}>{t.name}</span>
-              <span
-                className="jp-text"
-                style={{ fontSize: 10.5, color: 'var(--ink-4)', marginLeft: 'auto' }}
               >
-                {t.desc}
-              </span>
-            </div>
-          ))}
+                <span
+                  style={{
+                    width: 5,
+                    height: 5,
+                    borderRadius: '50%',
+                    background: connected ? COLOR_CONNECTED : COLOR_DISCONNECTED,
+                    flexShrink: 0,
+                  }}
+                />
+                <span style={{ fontSize: 12, color: 'var(--ink-2)', fontWeight: 500 }}>
+                  {t.name}
+                </span>
+                <span
+                  className="jp-text"
+                  style={{ fontSize: 10.5, color: 'var(--ink-4)', marginLeft: 'auto' }}
+                >
+                  {t.desc}
+                </span>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
