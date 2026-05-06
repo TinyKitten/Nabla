@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { fetchWeather, getCachedWeather } from '../data/weather';
+import { fetchStoreRating, getCachedStoreRating } from '../data/storeRating';
 import type { Message, ToolCall, WidgetType } from '../types';
 
 interface QuickReply {
@@ -17,6 +18,15 @@ async function weatherReply(): Promise<string> {
   }
 }
 
+async function ratingReply(): Promise<string> {
+  try {
+    const r = getCachedStoreRating() ?? (await fetchStoreRating());
+    return `TrainLCD の App Store 評価は **★${r.stars}**(${r.reviews.toLocaleString()} 件)です。テキストレビューは${r.delta}追加されました。`;
+  } catch {
+    return 'App Store 評価を取得できませんでした。App Store Connect の接続設定を確認してください。';
+  }
+}
+
 export const QUICK_REPLIES: Record<string, QuickReply> = {
   weather: {
     tools: [{ name: 'get_weather', label: '天気を取得中', icon: 'globe' }],
@@ -24,11 +34,8 @@ export const QUICK_REPLIES: Record<string, QuickReply> = {
     widget: 'weather',
   },
   rating: {
-    tools: [
-      { name: 'fetch_appstore', label: 'App Store から取得中', icon: 'star' },
-      { name: 'fetch_playstore', label: 'Play Store から取得中', icon: 'star' },
-    ],
-    text: 'TrainLCD のストア評価は **★4.7**(1,284 レビュー)です。今週は +12 件の新規レビューがあり、評価は先月から 0.1 上昇しています。',
+    tools: [{ name: 'fetch_appstore', label: 'App Store から取得中', icon: 'star' }],
+    text: ratingReply,
     widget: 'storeRating',
   },
   feedback: {
@@ -43,7 +50,7 @@ export const QUICK_REPLIES: Record<string, QuickReply> = {
   },
   addWidget: {
     tools: [],
-    text: 'どんなウィジェットを追加しますか?よく使われるのは以下です:\n\n- **天気** — 現在地の気温と天気\n- **ストア評価** — App Store / Play Store の星評価とトレンド\n- **新着フィードバック** — 直近のユーザーレビュー\n- **パフォーマンス** — クラッシュフリー率と起動時間\n- **タスク** — 進行中のタスク一覧\n\n名前を教えていただくか、「天気を追加して」のようにお伝えください。',
+    text: 'どんなウィジェットを追加しますか?よく使われるのは以下です:\n\n- **天気** — 現在地の気温と天気\n- **App Store 評価** — App Store の星評価とトレンド\n- **新着フィードバック** — 直近のユーザーレビュー\n- **パフォーマンス** — クラッシュフリー率と起動時間\n- **タスク** — 進行中のタスク一覧\n\n名前を教えていただくか、「天気を追加して」のようにお伝えください。',
   },
 };
 

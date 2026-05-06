@@ -30,8 +30,6 @@ export interface StoreRatingData {
   delta: string;
   trend: number[];
   breakdown: number[];
-  ranking: number;
-  country: string;
 }
 
 export interface FeedbackEntry {

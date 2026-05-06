@@ -33,35 +33,53 @@ A floating **Tweaks** button toggles light/dark mode and the accent color.
 - [Oxlint](https://oxc.rs/docs/guide/usage/linter.html) for fast linting
 - Plain CSS variables (no CSS-in-JS, no Tailwind)
 - HTML5 drag-and-drop for widget reordering and pinning
-- Widget data is mocked client-side, **except weather** which now hits the
-  OpenWeather API directly using browser geolocation (with a Tokyo Station
-  fallback). The other four widgets — store rating, feedback, performance,
-  tasks — are still mocked and will be wired up as Issues #2–#5 progress,
-  eventually behind an MCP-style tool layer ("OpenClaw").
+- Widget data is mocked client-side, **except weather** (browser-direct to
+  OpenWeather using geolocation with a Tokyo Station fallback) and **App Store
+  rating** (iTunes Lookup across ~155 storefronts for the headline number plus
+  the App Store Connect Customer Reviews API for trend / breakdown / delta —
+  all fetched via a tiny local proxy that holds the JWT key so the browser
+  never sees it). Google Play is intentionally out of scope: there is no
+  official aggregate-ratings API and we do not scrape the public store page.
+  The remaining three — feedback, performance, tasks — are still mocked and
+  will be wired up as Issues #3–#5 progress, eventually behind an MCP-style
+  tool layer ("OpenClaw").
 - Header `ToolsBadge` reflects which MCP tools are actually connected via a
-  small `useSyncExternalStore` in `src/state/toolConnections.ts`. Today only
-  OpenWeather flips to "connected" once the first fetch succeeds.
+  small `useSyncExternalStore` in `apps/web/src/state/toolConnections.ts`.
+  Today: `openWeather`, `appStoreConnect`.
 
 ## Running it
 
 ```bash
 npm install
-npm run dev          # http://localhost:5173
-npm run build        # production bundle in dist/
-npm run typecheck    # tsc -b --noEmit
-npm run lint         # oxlint
+npm run dev          # web on http://localhost:5173, proxy on :5174 (concurrent)
+npm run build        # builds both apps/web and apps/proxy
+npm run typecheck    # tsc -b --noEmit on both
+npm run lint         # oxlint (web only)
 npm run lint:fix     # oxlint --fix
 ```
 
-To enable the live weather widget, drop a free
-[OpenWeather](https://openweathermap.org/api) API key into `.env.local`:
+The repo is a small `npm` workspaces monorepo:
+
+- `apps/web/` — the Vite + React UI (the only thing you see in the browser).
+- `apps/proxy/` — a tiny Node http server on `:5174` that holds API keys the
+  browser must not see. Vite forwards `/api/*` to it.
+
+All secrets live in **one** root `.env.local` (Vite reads it via
+`envDir: '../../'`, the proxy via `node --env-file`):
 
 ```env
+# browser-direct (Vite exposes anything VITE_*-prefixed)
 VITE_OPENWEATHER_API_KEY=...
+
+# proxy-only — never bundled into the client
+APP_STORE_CONNECT_KEY_ID=...
+APP_STORE_CONNECT_ISSUER_ID=...
+APP_STORE_CONNECT_PRIVATE_KEY_PATH=./keys/AuthKey_XXXXXX.p8
+APP_STORE_CONNECT_APP_ID=...
 ```
 
-Without it, the weather widget shows a skeleton and the header reports
-OpenWeather as disconnected — that's the intended fallback.
+Missing keys → the affected widget shows a skeleton and the header reports the
+relevant tool as disconnected. That's the intended fallback, not a bug.
 
 ## Origin
 
@@ -72,6 +90,6 @@ in this repo.
 
 ## Status
 
-Personal, in-progress. Most widgets still show mocked data; weather is the
-first to be connected to a real source. Expect rough edges and opinionated
-decisions that only make sense for me.
+Personal, in-progress. Two widgets (weather, App Store rating) are connected
+to real sources; the other three are still mocked. Expect rough edges and
+opinionated decisions that only make sense for me.
