@@ -1,7 +1,8 @@
 import { Fragment, useState } from 'react';
-import { Icon } from './Icon.jsx';
+import { Icon } from './Icon';
+import type { ToolCall } from '../types';
 
-export function renderText(text) {
+export function renderText(text: string | undefined): React.ReactNode {
   if (!text) return null;
   const lines = text.split('\n');
   return lines.map((line, li) => {
@@ -25,7 +26,11 @@ export function renderText(text) {
   });
 }
 
-export function ToolTrace({ tools }) {
+interface ToolTraceProps {
+  tools?: ToolCall[];
+}
+
+export function ToolTrace({ tools }: ToolTraceProps) {
   if (!tools || tools.length === 0) return null;
   return (
     <div style={{ marginBottom: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -74,16 +79,16 @@ export function MessageActions() {
   const [copied, setCopied] = useState(false);
   const items = [
     {
-      name: 'copy',
+      name: 'copy' as const,
       label: 'コピー',
       onClick: () => {
         setCopied(true);
         setTimeout(() => setCopied(false), 1200);
       },
     },
-    { name: 'refresh', label: '再生成' },
-    { name: 'thumb-up', label: 'いいね' },
-    { name: 'thumb-down', label: 'よくない' },
+    { name: 'refresh' as const, label: '再生成' },
+    { name: 'thumb-up' as const, label: 'いいね' },
+    { name: 'thumb-down' as const, label: 'よくない' },
   ];
   return (
     <div style={{ display: 'flex', gap: 2, marginTop: 8, opacity: 0.65 }}>

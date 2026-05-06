@@ -1,5 +1,59 @@
-export function Icon({ name, size = 18, stroke = 1.6, style }) {
-  const s = {
+import type { CSSProperties } from 'react';
+
+export type IconName =
+  | 'send'
+  | 'plus'
+  | 'mic'
+  | 'search'
+  | 'attach'
+  | 'chevron-left'
+  | 'chevron-down'
+  | 'chevron-right'
+  | 'sparkle'
+  | 'edit'
+  | 'menu'
+  | 'panel'
+  | 'more'
+  | 'copy'
+  | 'thumb-up'
+  | 'thumb-down'
+  | 'refresh'
+  | 'image'
+  | 'globe'
+  | 'code'
+  | 'sun'
+  | 'moon'
+  | 'play'
+  | 'pause'
+  | 'arrow-up'
+  | 'stop'
+  | 'check'
+  | 'star'
+  | 'history'
+  | 'cloud-sun'
+  | 'star-line'
+  | 'message-dots'
+  | 'activity'
+  | 'check-square'
+  | 'wx-sun'
+  | 'wx-cloud'
+  | 'wx-partly'
+  | 'wx-rain'
+  | 'settings'
+  | 'x'
+  | 'pin'
+  | 'folder'
+  | 'logo';
+
+interface IconProps {
+  name: IconName | string;
+  size?: number;
+  stroke?: number;
+  style?: CSSProperties;
+}
+
+export function Icon({ name, size = 18, stroke = 1.6, style }: IconProps) {
+  const s: CSSProperties = {
     width: size,
     height: size,
     fill: 'none',

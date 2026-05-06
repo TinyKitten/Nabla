@@ -1,20 +1,22 @@
 import { useEffect, useRef, useState } from 'react';
-import { useChat } from '../hooks/useChat.js';
-import { Icon } from './Icon.jsx';
-import { ToolsBadge } from './ToolsBadge.jsx';
-import { PinnedStrip } from './PinnedStrip.jsx';
-import { MessageRow } from './MessageRow.jsx';
-import { ChatComposer } from './ChatComposer.jsx';
-import { WidgetGrid } from './WidgetGrid.jsx';
-import { WIDGET_DEFS } from './Widgets.jsx';
+import { useChat } from '../hooks/useChat';
+import { Icon } from './Icon';
+import { ToolsBadge } from './ToolsBadge';
+import { PinnedStrip } from './PinnedStrip';
+import { MessageRow } from './MessageRow';
+import { ChatComposer } from './ChatComposer';
+import { WidgetGrid } from './WidgetGrid';
+import { WIDGET_DEFS } from './Widgets';
+import type { Message, WidgetItem, WidgetType } from '../types';
+import type { IconName } from './Icon';
 
-const PINNED_INITIAL = [
+const PINNED_INITIAL: WidgetItem[] = [
   { id: 'h2', type: 'storeRating', size: 'sm', refreshInterval: 1800 },
   { id: 'h3', type: 'feedback', size: 'sm', refreshInterval: 600 },
   { id: 'h4', type: 'tasks', size: 'sm', refreshInterval: 0 },
 ];
 
-const WIDGETS_INITIAL = [
+const WIDGETS_INITIAL: WidgetItem[] = [
   { id: 'd0', type: 'weather', size: 'md', refreshInterval: 600 },
   { id: 'd1', type: 'storeRating', size: 'lg', refreshInterval: 1800 },
   { id: 'd2', type: 'performance', size: 'md', refreshInterval: 1800 },
@@ -22,7 +24,13 @@ const WIDGETS_INITIAL = [
   { id: 'd4', type: 'tasks', size: 'md', refreshInterval: 0 },
 ];
 
-const SHORTCUTS = [
+interface Shortcut {
+  label: string;
+  q: string;
+  icon: IconName;
+}
+
+const SHORTCUTS: Shortcut[] = [
   { label: '今日の天気', q: '今日の天気は?', icon: 'cloud-sun' },
   { label: 'ストア評価', q: 'TrainLCDの評価', icon: 'star' },
   { label: '新着レビュー', q: '新しいフィードバックある?', icon: 'message-dots' },
@@ -30,7 +38,7 @@ const SHORTCUTS = [
 ];
 
 export function ChatLayout() {
-  const initial = [
+  const initial: Message[] = [
     {
       id: 'hinit',
       role: 'ai',
@@ -39,8 +47,8 @@ export function ChatLayout() {
     },
   ];
   const { messages, input, setInput, send, stop, streaming } = useChat(initial);
-  const [pinned, setPinned] = useState(PINNED_INITIAL);
-  const [widgets, setWidgets] = useState(WIDGETS_INITIAL);
+  const [pinned, setPinned] = useState<WidgetItem[]>(PINNED_INITIAL);
+  const [widgets, setWidgets] = useState<WidgetItem[]>(WIDGETS_INITIAL);
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== 'undefined' && window.innerWidth < 720,
   );
@@ -52,29 +60,29 @@ export function ChatLayout() {
   const [panelOpen, setPanelOpen] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth >= 720 : true,
   );
-  const scrollRef = useRef(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages]);
 
-  const openWidgetDetail = (w) => {
+  const openWidgetDetail = (w: WidgetItem) => {
     const def = WIDGET_DEFS[w.type];
     send(`${def.title}の詳しい状況を教えて`);
   };
 
-  const unpinWidget = (id) => {
+  const unpinWidget = (id: string) => {
     const w = pinned.find((x) => x.id === id);
     if (!w) return;
     setPinned((p) => p.filter((x) => x.id !== id));
     if (widgets.some((d) => d.type === w.type)) return;
     setWidgets((d) => [...d, { ...w, size: 'md' }]);
   };
-  const pinWidget = (id, beforeIdx) => {
+  const pinWidget = (id: string, beforeIdx?: number) => {
     const w = widgets.find((x) => x.id === id);
     if (!w) return;
     if (pinned.some((p) => p.type === w.type)) return;
-    const compact = {
+    const compact: WidgetItem = {
       id: 'p-' + w.id,
       type: w.type,
       size: 'sm',
@@ -88,9 +96,24 @@ export function ChatLayout() {
     });
   };
 
+  const acceptInlineToPin = (type: WidgetType, beforeIdx?: number) => {
+    if (pinned.some((p) => p.type === type)) return;
+    const id = 'p-inline-' + Date.now();
+    setPinned((p) => {
+      const next = [...p];
+      const idx = beforeIdx == null ? next.length : beforeIdx;
+      next.splice(Math.min(idx, next.length), 0, {
+        id,
+        type,
+        size: 'sm',
+        refreshInterval: 1800,
+      });
+      return next;
+    });
+  };
+
   return (
     <div className="chat-root" style={{ display: 'flex', height: '100%', background: 'var(--bg)' }}>
-      {/* Left rail */}
       <aside
         style={{
           width: isMobile ? 0 : 60,
@@ -135,7 +158,6 @@ export function ChatLayout() {
         </div>
       </aside>
 
-      {/* Center */}
       <main
         style={{
           flex: '1 1 0%',
@@ -181,20 +203,7 @@ export function ChatLayout() {
           onOpen={openWidgetDetail}
           onRemove={(id) => setPinned((p) => p.filter((w) => w.id !== id))}
           onAcceptFromGrid={pinWidget}
-          onAcceptInline={(type, beforeIdx) => {
-            if (pinned.some((p) => p.type === type)) return;
-            const id = 'p-inline-' + Date.now();
-            setPinned((p) => {
-              const next = [...p];
-              next.splice(Math.min(beforeIdx, next.length), 0, {
-                id,
-                type,
-                size: 'sm',
-                refreshInterval: 1800,
-              });
-              return next;
-            });
-          }}
+          onAcceptInline={acceptInlineToPin}
           onAdd={() => send('新しいウィジェットを追加')}
         />
 
@@ -209,11 +218,7 @@ export function ChatLayout() {
                 key={m.id}
                 m={m}
                 pinnedTypes={pinned.map((w) => w.type)}
-                onPinInline={(type) => {
-                  if (pinned.some((p) => p.type === type)) return;
-                  const id = 'p-inline-' + Date.now();
-                  setPinned((p) => [...p, { id, type, size: 'sm', refreshInterval: 1800 }]);
-                }}
+                onPinInline={(type) => acceptInlineToPin(type)}
               />
             ))}
           </div>
@@ -267,7 +272,6 @@ export function ChatLayout() {
         </div>
       </main>
 
-      {/* Right widgets panel */}
       {isMobile && panelOpen && (
         <div
           onClick={() => setPanelOpen(false)}

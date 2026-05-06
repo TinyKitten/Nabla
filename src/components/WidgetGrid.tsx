@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { Icon } from './Icon.jsx';
-import { Widget } from './Widgets.jsx';
+import { type DragEvent, useState } from 'react';
+import { Icon } from './Icon';
+import { Widget } from './Widgets';
+import type { WidgetItem, WidgetType } from '../types';
 
 function PinnedBadge() {
   const [hovered, setHovered] = useState(false);
@@ -51,6 +52,19 @@ function PinnedBadge() {
   );
 }
 
+interface WidgetGridProps {
+  widgets: WidgetItem[];
+  onReorder: (next: WidgetItem[]) => void;
+  onOpen?: (w: WidgetItem) => void;
+  onRemove?: (id: string) => void;
+  onRefresh?: (id: string) => void;
+  onToggleTask?: (id: string) => void;
+  onPin?: (id: string) => void;
+  onUnpin?: (type: WidgetType) => void;
+  accent?: string;
+  pinnedTypes?: WidgetType[];
+}
+
 export function WidgetGrid({
   widgets,
   onReorder,
@@ -62,11 +76,11 @@ export function WidgetGrid({
   onUnpin,
   accent,
   pinnedTypes = [],
-}) {
-  const [draggingId, setDraggingId] = useState(null);
-  const [overId, setOverId] = useState(null);
+}: WidgetGridProps) {
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
 
-  const handleDragStart = (id) => (e) => {
+  const handleDragStart = (id: string) => (e: DragEvent<HTMLElement>) => {
     setDraggingId(id);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', id);
@@ -74,11 +88,11 @@ export function WidgetGrid({
     const w = widgets.find((x) => x.id === id);
     if (w) window.__draggingGridWidgetType = w.type;
   };
-  const handleDragOver = (id) => (e) => {
+  const handleDragOver = (id: string) => (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     if (id !== draggingId) setOverId(id);
   };
-  const handleDrop = (id) => (e) => {
+  const handleDrop = (id: string) => (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     if (!draggingId || draggingId === id) return;
     const ids = widgets.map((w) => w.id);

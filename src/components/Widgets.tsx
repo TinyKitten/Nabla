@@ -1,11 +1,36 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Icon } from './Icon.jsx';
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
+import { Icon } from './Icon';
+import type {
+  DragHandleProps,
+  FeedbackData,
+  PerformanceData,
+  StoreRatingData,
+  TasksData,
+  WeatherData,
+  WidgetData,
+  WidgetItem,
+  WidgetSize,
+  WidgetType,
+} from '../types';
 
-export const WIDGET_DEFS = {
+interface WidgetDef {
+  title: string;
+  icon: string;
+  fetch: () => Promise<WidgetData>;
+}
+
+export const WIDGET_DEFS: Record<WidgetType, WidgetDef> = {
   weather: {
     title: '天気',
     icon: 'cloud-sun',
-    fetch: async () => ({
+    fetch: async (): Promise<WeatherData> => ({
       location: '東京・渋谷',
       temp: 18 + Math.round(Math.random() * 4 - 2),
       feels: 17,
@@ -17,7 +42,7 @@ export const WIDGET_DEFS = {
   storeRating: {
     title: 'TrainLCD · ストア評価',
     icon: 'star-line',
-    fetch: async () => ({
+    fetch: async (): Promise<StoreRatingData> => ({
       stars: 4.7,
       reviews: 1284 + Math.floor(Math.random() * 5),
       delta: '+12 今週',
@@ -30,7 +55,7 @@ export const WIDGET_DEFS = {
   feedback: {
     title: 'TrainLCD · 新着フィードバック',
     icon: 'message-dots',
-    fetch: async () => ({
+    fetch: async (): Promise<FeedbackData> => ({
       items: [
         { stars: 5, text: '通勤で毎日使ってます。乗換案内よりこっちが好き。', author: 'たけし', when: '2時間前' },
         { stars: 4, text: '中央線の英語表示お願いします', author: 'A. Chen', when: '5時間前' },
@@ -42,7 +67,7 @@ export const WIDGET_DEFS = {
   performance: {
     title: 'TrainLCD · パフォーマンス',
     icon: 'activity',
-    fetch: async () => ({
+    fetch: async (): Promise<PerformanceData> => ({
       crashFree: 99.84,
       delta: '+0.05%',
       coldStart: 1.21,
@@ -54,7 +79,7 @@ export const WIDGET_DEFS = {
   tasks: {
     title: '今日のタスク',
     icon: 'check-square',
-    fetch: async () => ({
+    fetch: async (): Promise<TasksData> => ({
       items: [
         { id: 't1', text: 'TrainLCD v3.4 のリリースノート作成', done: false },
         { id: 't2', text: 'デザインレビュー @ 15:00', done: false },
@@ -65,7 +90,21 @@ export const WIDGET_DEFS = {
   },
 };
 
-export function Sparkline({ values, color = 'currentColor', height = 28, width = 200, fill = false }) {
+interface SparklineProps {
+  values: number[];
+  color?: string;
+  height?: number;
+  width?: number;
+  fill?: boolean;
+}
+
+export function Sparkline({
+  values,
+  color = 'currentColor',
+  height = 28,
+  width = 200,
+  fill = false,
+}: SparklineProps) {
   if (!values || values.length < 2) return null;
   const min = Math.min(...values);
   const max = Math.max(...values);
@@ -73,7 +112,7 @@ export function Sparkline({ values, color = 'currentColor', height = 28, width =
   const padY = 4;
   const w = width;
   const h = height;
-  const pts = values.map((v, i) => {
+  const pts: [number, number][] = values.map((v, i) => {
     const x = (i / (values.length - 1)) * w;
     const y = padY + (1 - (v - min) / range) * (h - padY * 2);
     return [x, y];
@@ -103,32 +142,36 @@ export function Sparkline({ values, color = 'currentColor', height = 28, width =
   );
 }
 
-export function useWidget(type, intervalSec) {
-  const [data, setData] = useState(null);
-  const [, setLoading] = useState(true);
-  const [lastRefresh, setLastRefresh] = useState(null);
+export function useWidget(type: WidgetType, intervalSec: number) {
+  const [data, setData] = useState<WidgetData | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
 
   const refresh = useCallback(async () => {
-    setLoading(true);
     const def = WIDGET_DEFS[type];
     if (!def) return;
     const d = await def.fetch();
     setData(d);
     setLastRefresh(new Date());
-    setLoading(false);
   }, [type]);
 
   useEffect(() => {
     refresh();
     if (!intervalSec) return undefined;
-    const id = setInterval(refresh, intervalSec * 1000);
-    return () => clearInterval(id);
+    const id = window.setInterval(refresh, intervalSec * 1000);
+    return () => window.clearInterval(id);
   }, [refresh, intervalSec]);
 
   return { data, lastRefresh, refresh };
 }
 
-function MenuItem({ icon, label, onClick, danger }) {
+interface MenuItemProps {
+  icon: string;
+  label: string;
+  onClick: () => void;
+  danger?: boolean;
+}
+
+function MenuItem({ icon, label, onClick, danger }: MenuItemProps) {
   return (
     <button
       onClick={onClick}
@@ -157,6 +200,22 @@ function MenuItem({ icon, label, onClick, danger }) {
   );
 }
 
+interface WidgetShellProps {
+  size: WidgetSize;
+  title: string;
+  icon?: string;
+  accent?: string;
+  children: ReactNode;
+  onOpen?: () => void;
+  onRemove?: () => void;
+  onRefresh?: () => void;
+  onPin?: () => void;
+  onUnpin?: () => void;
+  isPinned?: boolean;
+  lastRefresh?: Date | null;
+  dragHandleProps?: DragHandleProps;
+}
+
 export function WidgetShell({
   size,
   title,
@@ -170,20 +229,21 @@ export function WidgetShell({
   isPinned,
   lastRefresh,
   dragHandleProps,
-}) {
+}: WidgetShellProps) {
   const [hovered, setHovered] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const menuId = useRef(Math.random().toString(36).slice(2));
   useEffect(() => {
     if (!showMenu) return undefined;
-    const onOther = (e) => {
-      if (e.detail !== menuId.current) setShowMenu(false);
+    const onOther = (e: Event) => {
+      const ce = e as CustomEvent<string>;
+      if (ce.detail !== menuId.current) setShowMenu(false);
     };
     window.addEventListener('widget-menu-open', onOther);
     return () => window.removeEventListener('widget-menu-open', onOther);
   }, [showMenu]);
-  const [menuPos, setMenuPos] = useState(null);
-  const moreBtnRef = useRef(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const moreBtnRef = useRef<HTMLButtonElement | null>(null);
   useLayoutEffect(() => {
     if (!showMenu) {
       setMenuPos(null);
@@ -209,8 +269,9 @@ export function WidgetShell({
   }, [showMenu]);
   useEffect(() => {
     if (!showMenu) return undefined;
-    const close = (e) => {
-      if (e.target.closest('[data-widget-control]')) return;
+    const close = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && target.closest('[data-widget-control]')) return;
       setShowMenu(false);
     };
     document.addEventListener('mousedown', close);
@@ -260,7 +321,8 @@ export function WidgetShell({
         overflow: 'hidden',
       }}
       onClick={(e) => {
-        if (e.target.closest('[data-widget-control]')) return;
+        const target = e.target as HTMLElement | null;
+        if (target && target.closest('[data-widget-control]')) return;
         if (onOpen) onOpen();
       }}
     >
@@ -433,7 +495,7 @@ export function WidgetShell({
   );
 }
 
-function weatherIcon(cond) {
+function weatherIcon(cond: string | undefined) {
   if (!cond) return 'wx-sun';
   if (cond.includes('雨')) return 'wx-rain';
   if (cond.includes('曇') && cond.includes('晴')) return 'wx-partly';
@@ -441,7 +503,7 @@ function weatherIcon(cond) {
   return 'wx-sun';
 }
 
-function Skeleton({ size }) {
+function Skeleton({ size }: { size: WidgetSize }) {
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6, padding: '4px 0' }}>
       <div style={{ height: 12, width: '60%', background: 'var(--bg-hover)', borderRadius: 4 }} />
@@ -457,7 +519,7 @@ function Skeleton({ size }) {
   );
 }
 
-function WeatherWidget({ size, data }) {
+function WeatherWidget({ size, data }: { size: WidgetSize; data: WeatherData | null }) {
   if (!data) return <Skeleton size={size} />;
   const wxIcon = weatherIcon(data.cond);
   if (size === 'sm') {
@@ -647,9 +709,15 @@ function WeatherWidget({ size, data }) {
   );
 }
 
-function StoreRatingWidget({ size, data }) {
+function StoreRatingWidget({
+  size,
+  data,
+}: {
+  size: WidgetSize;
+  data: StoreRatingData | null;
+}) {
   if (!data) return <Skeleton size={size} />;
-  const renderStars = (rating, starSize = 12) => {
+  const renderStars = (rating: number, starSize = 12) => {
     const full = Math.floor(rating);
     const hasHalf = rating - full >= 0.25 && rating - full < 0.75;
     const filled = hasHalf ? full : Math.round(rating);
@@ -859,9 +927,9 @@ function StoreRatingWidget({ size, data }) {
   );
 }
 
-function FeedbackWidget({ size, data }) {
+function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData | null }) {
   if (!data) return <Skeleton size={size} />;
-  const stars = (n) => '★'.repeat(n) + '☆'.repeat(5 - n);
+  const stars = (n: number) => '★'.repeat(n) + '☆'.repeat(5 - n);
   if (size === 'sm') {
     return (
       <>
@@ -951,7 +1019,7 @@ function FeedbackWidget({ size, data }) {
   );
 }
 
-function PerfWidget({ size, data }) {
+function PerfWidget({ size, data }: { size: WidgetSize; data: PerformanceData | null }) {
   if (!data) return <Skeleton size={size} />;
   if (size === 'sm') {
     return (
@@ -1008,15 +1076,25 @@ function PerfWidget({ size, data }) {
   );
 }
 
-function TasksWidget({ size, data, onToggle }) {
-  const [localItems, setLocalItems] = useState(null);
+function TasksWidget({
+  size,
+  data,
+  onToggle,
+}: {
+  size: WidgetSize;
+  data: TasksData | null;
+  onToggle?: (id: string) => void;
+}) {
+  const [localItems, setLocalItems] = useState<TasksData['items'] | null>(null);
   useEffect(() => {
     if (data) setLocalItems(data.items);
   }, [data]);
   if (!data || !localItems) return <Skeleton size={size} />;
   const items = localItems;
-  const handleToggle = (id) => {
-    setLocalItems((prev) => prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
+  const handleToggle = (id: string) => {
+    setLocalItems((prev) =>
+      prev ? prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t)) : prev,
+    );
     if (onToggle) onToggle(id);
   };
   const undone = items.filter((i) => !i.done).length;
@@ -1091,6 +1169,19 @@ function TasksWidget({ size, data, onToggle }) {
   );
 }
 
+interface WidgetProps {
+  widget: WidgetItem;
+  onOpen?: () => void;
+  onRemove?: () => void;
+  onRefresh?: () => void;
+  onToggleTask?: (id: string) => void;
+  onPin?: () => void;
+  onUnpin?: () => void;
+  isPinned?: boolean;
+  dragHandleProps?: DragHandleProps;
+  accent?: string;
+}
+
 export function Widget({
   widget,
   onOpen,
@@ -1102,19 +1193,30 @@ export function Widget({
   isPinned,
   dragHandleProps,
   accent,
-}) {
+}: WidgetProps) {
   const { data, lastRefresh, refresh } = useWidget(widget.type, widget.refreshInterval);
-
-  const renderer = {
-    weather: WeatherWidget,
-    storeRating: StoreRatingWidget,
-    feedback: FeedbackWidget,
-    performance: PerfWidget,
-    tasks: TasksWidget,
-  }[widget.type];
-
   const def = WIDGET_DEFS[widget.type];
-  const Renderer = renderer;
+
+  const renderBody = () => {
+    switch (widget.type) {
+      case 'weather':
+        return <WeatherWidget size={widget.size} data={data as WeatherData | null} />;
+      case 'storeRating':
+        return <StoreRatingWidget size={widget.size} data={data as StoreRatingData | null} />;
+      case 'feedback':
+        return <FeedbackWidget size={widget.size} data={data as FeedbackData | null} />;
+      case 'performance':
+        return <PerfWidget size={widget.size} data={data as PerformanceData | null} />;
+      case 'tasks':
+        return (
+          <TasksWidget
+            size={widget.size}
+            data={data as TasksData | null}
+            onToggle={onToggleTask}
+          />
+        );
+    }
+  };
 
   return (
     <WidgetShell
@@ -1134,7 +1236,7 @@ export function Widget({
       lastRefresh={lastRefresh}
       dragHandleProps={dragHandleProps}
     >
-      <Renderer size={widget.size} data={data} onToggle={onToggleTask} />
+      {renderBody()}
     </WidgetShell>
   );
 }

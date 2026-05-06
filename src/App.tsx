@@ -1,15 +1,15 @@
 import { useEffect } from 'react';
-import { ChatLayout } from './components/ChatLayout.jsx';
+import { ChatLayout } from './components/ChatLayout';
 import {
   TweaksPanel,
   TweakSection,
   TweakRadio,
   TweakColor,
   useTweaks,
-} from './components/TweaksPanel.jsx';
+} from './components/TweaksPanel';
 
 const TWEAK_DEFAULTS = {
-  theme: 'light',
+  theme: 'light' as 'light' | 'dark',
   accent: '#008ffe',
 };
 

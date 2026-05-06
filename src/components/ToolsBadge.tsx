@@ -1,6 +1,11 @@
 import { useState } from 'react';
 
-const TOOLS = [
+interface ToolEntry {
+  name: string;
+  desc: string;
+}
+
+const TOOLS: ToolEntry[] = [
   { name: 'GitHub', desc: 'リポジトリ・PR・Issue' },
   { name: 'App Store Connect', desc: 'レビュー・売上データ' },
   { name: 'Google Calendar', desc: '予定の閲覧' },

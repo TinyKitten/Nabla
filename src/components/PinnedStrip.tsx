@@ -1,6 +1,7 @@
-import { Fragment, useEffect, useMemo, useState } from 'react';
-import { Icon } from './Icon.jsx';
-import { Widget } from './Widgets.jsx';
+import { type DragEvent, Fragment, useEffect, useMemo, useState } from 'react';
+import { Icon } from './Icon';
+import { Widget } from './Widgets';
+import type { WidgetItem, WidgetType } from '../types';
 
 function DropIndicator() {
   return (
@@ -17,6 +18,18 @@ function DropIndicator() {
   );
 }
 
+interface PinnedStripProps {
+  widgets: WidgetItem[];
+  onReorder: (next: WidgetItem[]) => void;
+  onOpen: (w: WidgetItem) => void;
+  onRemove: (id: string) => void;
+  onAcceptFromGrid: (id: string, beforeIdx: number) => void;
+  onAcceptInline?: (type: WidgetType, beforeIdx: number) => void;
+  onAdd: () => void;
+}
+
+type AcceptState = false | true | 'blocked';
+
 export function PinnedStrip({
   widgets,
   onReorder,
@@ -25,10 +38,10 @@ export function PinnedStrip({
   onAcceptFromGrid,
   onAcceptInline,
   onAdd,
-}) {
-  const [draggingId, setDraggingId] = useState(null);
-  const [dropIdx, setDropIdx] = useState(null);
-  const [acceptingExternal, setAcceptingExternal] = useState(false);
+}: PinnedStripProps) {
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dropIdx, setDropIdx] = useState<number | null>(null);
+  const [acceptingExternal, setAcceptingExternal] = useState<AcceptState>(false);
   const [collapsed, setCollapsed] = useState(false);
   const [isMobileStrip, setIsMobileStrip] = useState(
     () => typeof window !== 'undefined' && window.innerWidth < 720,
@@ -40,7 +53,7 @@ export function PinnedStrip({
   }, []);
   const pinnedTypes = useMemo(() => widgets.map((w) => w.type), [widgets]);
 
-  const computeIdxFromX = (e, container) => {
+  const computeIdxFromX = (e: DragEvent, container: Element) => {
     const items = Array.from(container.querySelectorAll('[data-pinned-item]'));
     for (let i = 0; i < items.length; i++) {
       const r = items[i].getBoundingClientRect();
@@ -49,7 +62,7 @@ export function PinnedStrip({
     return items.length;
   };
 
-  const containerOnDragOver = (e) => {
+  const containerOnDragOver = (e: DragEvent<HTMLDivElement>) => {
     const types = e.dataTransfer.types;
     const fromGrid = types.includes('application/x-widget-id');
     const fromPin = types.includes('application/x-pinned-id');
@@ -76,13 +89,13 @@ export function PinnedStrip({
     if (fromGrid || fromInline) setAcceptingExternal(true);
   };
 
-  const containerOnDrop = (e) => {
+  const containerOnDrop = (e: DragEvent<HTMLDivElement>) => {
     const gridId = e.dataTransfer.getData('application/x-widget-id');
     const pinId = e.dataTransfer.getData('application/x-pinned-id');
-    const inlineType = e.dataTransfer.getData('application/x-inline-type');
+    const inlineType = e.dataTransfer.getData('application/x-inline-type') as WidgetType | '';
     if (gridId) {
       e.preventDefault();
-      const gridType = e.dataTransfer.getData('application/x-pinned-type');
+      const gridType = e.dataTransfer.getData('application/x-pinned-type') as WidgetType | '';
       if (gridType && pinnedTypes.includes(gridType)) {
         setDraggingId(null);
         setDropIdx(null);
@@ -112,8 +125,8 @@ export function PinnedStrip({
     setAcceptingExternal(false);
   };
 
-  const containerOnDragLeave = (e) => {
-    if (!e.currentTarget.contains(e.relatedTarget)) {
+  const containerOnDragLeave = (e: DragEvent<HTMLDivElement>) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
       setDropIdx(null);
       setAcceptingExternal(false);
     }

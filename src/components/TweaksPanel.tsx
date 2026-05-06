@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 
 const TWEAKS_STYLE = `
   .twk-panel{position:fixed;right:16px;bottom:16px;z-index:2147483646;width:280px;
@@ -49,21 +55,29 @@ const TWEAKS_STYLE = `
   .twk-toggle-btn:hover{background:rgba(20,20,22,.96)}
 `;
 
-export function useTweaks(defaults) {
-  const [values, setValues] = useState(defaults);
-  const setTweak = useCallback((keyOrEdits, val) => {
-    const edits =
-      typeof keyOrEdits === 'object' && keyOrEdits !== null
-        ? keyOrEdits
-        : { [keyOrEdits]: val };
-    setValues((prev) => ({ ...prev, ...edits }));
-  }, []);
-  return [values, setTweak];
+export function useTweaks<T extends Record<string, unknown>>(defaults: T) {
+  const [values, setValues] = useState<T>(defaults);
+  const setTweak = useCallback(
+    <K extends keyof T>(keyOrEdits: K | Partial<T>, val?: T[K]) => {
+      const edits =
+        typeof keyOrEdits === 'object' && keyOrEdits !== null
+          ? (keyOrEdits as Partial<T>)
+          : ({ [keyOrEdits as K]: val } as Partial<T>);
+      setValues((prev) => ({ ...prev, ...edits }));
+    },
+    [],
+  );
+  return [values, setTweak] as const;
 }
 
-export function TweaksPanel({ title = 'Tweaks', children }) {
+interface TweaksPanelProps {
+  title?: string;
+  children: ReactNode;
+}
+
+export function TweaksPanel({ title = 'Tweaks', children }: TweaksPanelProps) {
   const [open, setOpen] = useState(false);
-  const dragRef = useRef(null);
+  const dragRef = useRef<HTMLDivElement | null>(null);
   const offsetRef = useRef({ x: 16, y: 16 });
   const PAD = 16;
 
@@ -89,7 +103,7 @@ export function TweaksPanel({ title = 'Tweaks', children }) {
     return () => window.removeEventListener('resize', clampToViewport);
   }, [open, clampToViewport]);
 
-  const onDragStart = (e) => {
+  const onDragStart = (e: React.MouseEvent) => {
     const panel = dragRef.current;
     if (!panel) return;
     const r = panel.getBoundingClientRect();
@@ -97,7 +111,7 @@ export function TweaksPanel({ title = 'Tweaks', children }) {
     const sy = e.clientY;
     const startRight = window.innerWidth - r.right;
     const startBottom = window.innerHeight - r.bottom;
-    const move = (ev) => {
+    const move = (ev: MouseEvent) => {
       offsetRef.current = {
         x: startRight - (ev.clientX - sx),
         y: startBottom - (ev.clientY - sy),
@@ -144,7 +158,7 @@ export function TweaksPanel({ title = 'Tweaks', children }) {
   );
 }
 
-export function TweakSection({ title, children }) {
+export function TweakSection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <>
       <div className="twk-sect">{title}</div>
@@ -153,7 +167,7 @@ export function TweakSection({ title, children }) {
   );
 }
 
-function TweakRow({ label, children }) {
+function TweakRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="twk-row">
       <div className="twk-lbl">
@@ -164,8 +178,27 @@ function TweakRow({ label, children }) {
   );
 }
 
-export function TweakRadio({ label, value, options, onChange }) {
-  const opts = options.map((o) => (typeof o === 'object' ? o : { value: o, label: o }));
+interface RadioOption<V extends string> {
+  value: V;
+  label: string;
+}
+
+interface TweakRadioProps<V extends string> {
+  label: string;
+  value: V;
+  options: (V | RadioOption<V>)[];
+  onChange: (value: V) => void;
+}
+
+export function TweakRadio<V extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: TweakRadioProps<V>) {
+  const opts: RadioOption<V>[] = options.map((o) =>
+    typeof o === 'object' ? o : { value: o, label: o },
+  );
   const idx = Math.max(0, opts.findIndex((o) => o.value === value));
   const n = opts.length;
   return (
@@ -194,7 +227,7 @@ export function TweakRadio({ label, value, options, onChange }) {
   );
 }
 
-function isLight(hex) {
+function isLight(hex: string) {
   const h = String(hex).replace('#', '');
   const x = h.length === 3 ? h.replace(/./g, (c) => c + c) : h.padEnd(6, '0');
   const n = parseInt(x.slice(0, 6), 16);
@@ -205,7 +238,7 @@ function isLight(hex) {
   return r * 299 + g * 587 + b * 114 > 148000;
 }
 
-function Check({ light }) {
+function Check({ light }: { light: boolean }) {
   return (
     <svg viewBox="0 0 14 14" aria-hidden="true">
       <path
@@ -220,7 +253,14 @@ function Check({ light }) {
   );
 }
 
-export function TweakColor({ label, value, options, onChange }) {
+interface TweakColorProps {
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (value: string) => void;
+}
+
+export function TweakColor({ label, value, options, onChange }: TweakColorProps) {
   return (
     <TweakRow label={label}>
       <div className="twk-chips" role="radiogroup">

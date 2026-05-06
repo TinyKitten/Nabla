@@ -1,30 +1,35 @@
 import { useEffect, useRef, useState } from 'react';
-import { Icon } from './Icon.jsx';
+import { Icon } from './Icon';
 
-function VoiceOverlay({ onCommit, onCancel }) {
+interface VoiceOverlayProps {
+  onCommit: (text: string) => void;
+  onCancel: () => void;
+}
+
+function VoiceOverlay({ onCommit, onCancel }: VoiceOverlayProps) {
   const [seconds, setSeconds] = useState(0);
   const [transcript, setTranscript] = useState('');
-  const phrases = useRef([
+  const phrases = useRef<string[]>([
     'TrainLCD ',
     'TrainLCD の今週の ',
     'TrainLCD の今週のレビュー ',
     'TrainLCD の今週のレビューを要約して',
   ]);
   useEffect(() => {
-    const t = setInterval(() => setSeconds((s) => s + 1), 1000);
-    return () => clearInterval(t);
+    const t = window.setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => window.clearInterval(t);
   }, []);
   useEffect(() => {
     let i = 0;
-    const interval = setInterval(() => {
+    const interval = window.setInterval(() => {
       if (i < phrases.current.length) {
         setTranscript(phrases.current[i]);
         i++;
       }
     }, 700);
-    return () => clearInterval(interval);
+    return () => window.clearInterval(interval);
   }, []);
-  const fmt = (s) =>
+  const fmt = (s: number) =>
     `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
 
   return (
@@ -118,7 +123,15 @@ function VoiceOverlay({ onCommit, onCancel }) {
   );
 }
 
-export function ChatComposer({ value, onChange, onSend, onStop, streaming }) {
+interface ChatComposerProps {
+  value: string;
+  onChange: (next: string) => void;
+  onSend: () => void;
+  onStop: () => void;
+  streaming: boolean;
+}
+
+export function ChatComposer({ value, onChange, onSend, onStop, streaming }: ChatComposerProps) {
   const [recording, setRecording] = useState(false);
   return (
     <div style={{ position: 'relative' }}>
@@ -164,7 +177,7 @@ export function ChatComposer({ value, onChange, onSend, onStop, streaming }) {
           className="btn-icon"
           onClick={() => setRecording((r) => !r)}
           title={recording ? '録音を停止' : '音声入力'}
-          style={recording ? { background: 'var(--accent-soft)', color: 'var(--accent)' } : null}
+          style={recording ? { background: 'var(--accent-soft)', color: 'var(--accent)' } : undefined}
         >
           <Icon name="mic" size={15} />
         </button>

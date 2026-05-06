@@ -1,6 +1,13 @@
 import { useCallback, useRef, useState } from 'react';
+import type { Message, ToolCall, WidgetType } from '../types';
 
-export const QUICK_REPLIES = {
+interface QuickReply {
+  tools: ToolCall[];
+  text: string;
+  widget?: WidgetType;
+}
+
+export const QUICK_REPLIES: Record<string, QuickReply> = {
   weather: {
     tools: [{ name: 'get_weather', label: '天気を取得中', icon: 'globe' }],
     text: '東京・渋谷は現在 18°、晴れ時々曇りです。体感は 17° で、降水確率は 10%。夕方にかけて少し雲が増えますが、雨の心配はなさそうです。',
@@ -30,7 +37,7 @@ export const QUICK_REPLIES = {
   },
 };
 
-function detectIntent(text) {
+function detectIntent(text: string): keyof typeof QUICK_REPLIES | null {
   const t = text.toLowerCase();
   if (/ウィジェットを追加|ウィジェット追加|widget add|add widget/.test(t)) return 'addWidget';
   if (/天気|weather|気温|雨/.test(t)) return 'weather';
@@ -40,23 +47,30 @@ function detectIntent(text) {
   return null;
 }
 
-export function useChat(initialMessages = []) {
-  const [messages, setMessages] = useState(initialMessages);
+export function useChat(initialMessages: Message[] = []) {
+  const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
-  const streamRef = useRef(null);
+  const streamRef = useRef<string | null>(null);
 
   const send = useCallback(
-    async (textArg) => {
+    async (textArg?: string) => {
       const text = (textArg ?? input).trim();
       if (!text || streaming) return;
 
       const now = new Date();
       const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-      const userMsg = { id: 'u' + Date.now(), role: 'user', text, time };
+      const userMsg: Message = { id: 'u' + Date.now(), role: 'user', text, time };
       const aiId = 'a' + Date.now();
-      const aiMsg = { id: aiId, role: 'ai', text: '', time, streaming: true, tools: [] };
+      const aiMsg: Message = {
+        id: aiId,
+        role: 'ai',
+        text: '',
+        time,
+        streaming: true,
+        tools: [],
+      };
 
       setMessages((prev) => [...prev, userMsg, aiMsg]);
       setInput('');
@@ -68,8 +82,8 @@ export function useChat(initialMessages = []) {
 
       try {
         let reply = '';
-        let widget = null;
-        let tools = [];
+        let widget: WidgetType | undefined;
+        let tools: ToolCall[] = [];
 
         if (canned) {
           for (const tool of canned.tools) {
@@ -115,7 +129,7 @@ export function useChat(initialMessages = []) {
           }
         };
         setTimeout(tick, 200);
-      } catch (e) {
+      } catch {
         setMessages((prev) =>
           prev.map((m) =>
             m.id === aiId

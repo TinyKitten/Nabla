@@ -1,8 +1,15 @@
-import { Icon } from './Icon.jsx';
-import { renderText, ToolTrace, MessageActions } from './MessageRender.jsx';
-import { Widget } from './Widgets.jsx';
+import { Icon } from './Icon';
+import { renderText, ToolTrace, MessageActions } from './MessageRender';
+import { Widget } from './Widgets';
+import type { Message, WidgetType } from '../types';
 
-export function MessageRow({ m, pinnedTypes, onPinInline }) {
+interface MessageRowProps {
+  m: Message;
+  pinnedTypes?: WidgetType[];
+  onPinInline?: (type: WidgetType) => void;
+}
+
+export function MessageRow({ m, pinnedTypes, onPinInline }: MessageRowProps) {
   if (m.role === 'user') {
     return (
       <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px 0' }}>
@@ -29,7 +36,8 @@ export function MessageRow({ m, pinnedTypes, onPinInline }) {
           </div>
         )}
         {m.widget && !m.streaming && (() => {
-          const alreadyPinned = pinnedTypes && pinnedTypes.includes(m.widget);
+          const widgetType = m.widget;
+          const alreadyPinned = !!(pinnedTypes && pinnedTypes.includes(widgetType));
           return (
             <div
               style={{
@@ -43,9 +51,14 @@ export function MessageRow({ m, pinnedTypes, onPinInline }) {
               title={alreadyPinned ? 'すでにピン留め済み' : 'ピン留めへドラッグ'}
             >
               <Widget
-                widget={{ id: 'h-inline-' + m.id, type: m.widget, size: 'md', refreshInterval: 0 }}
+                widget={{
+                  id: 'h-inline-' + m.id,
+                  type: widgetType,
+                  size: 'md',
+                  refreshInterval: 0,
+                }}
                 accent="var(--accent)"
-                onPin={alreadyPinned || !onPinInline ? undefined : () => onPinInline(m.widget)}
+                onPin={alreadyPinned || !onPinInline ? undefined : () => onPinInline(widgetType)}
                 isPinned={alreadyPinned}
                 dragHandleProps={
                   alreadyPinned
@@ -54,8 +67,8 @@ export function MessageRow({ m, pinnedTypes, onPinInline }) {
                         draggable: true,
                         onDragStart: (e) => {
                           e.dataTransfer.effectAllowed = 'copy';
-                          e.dataTransfer.setData('application/x-inline-type', m.widget);
-                          window.__draggingInlineWidgetType = m.widget;
+                          e.dataTransfer.setData('application/x-inline-type', widgetType);
+                          window.__draggingInlineWidgetType = widgetType;
                         },
                         onDragEnd: () => {
                           window.__draggingInlineWidgetType = null;
