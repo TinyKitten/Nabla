@@ -963,14 +963,15 @@ function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData |
       </>
     );
   }
+  const visibleItems = data.items.slice(0, 5);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, overflow: 'hidden' }}>
-      {data.items.map((it, i) => (
+      {visibleItems.map((it, i) => (
         <div
           key={i}
           style={{
-            paddingBottom: i < data.items.length - 1 ? 8 : 0,
-            borderBottom: i < data.items.length - 1 ? '1px solid var(--line)' : 'none',
+            paddingBottom: i < visibleItems.length - 1 ? 8 : 0,
+            borderBottom: i < visibleItems.length - 1 ? '1px solid var(--line)' : 'none',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
