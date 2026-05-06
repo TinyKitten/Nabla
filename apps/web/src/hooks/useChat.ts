@@ -21,7 +21,7 @@ async function weatherReply(): Promise<string> {
 async function ratingReply(): Promise<string> {
   try {
     const r = getCachedStoreRating() ?? (await fetchStoreRating());
-    return `TrainLCD の App Store 評価は **★${r.stars}**(${r.reviews.toLocaleString()} 件)です。テキストレビューは ${r.delta} です。`;
+    return `TrainLCD の App Store 評価は **★${r.stars}**(${r.reviews.toLocaleString()} 件)です。テキストレビューは${r.delta}追加されました。`;
   } catch {
     return 'App Store 評価を取得できませんでした。App Store Connect の接続設定を確認してください。';
   }

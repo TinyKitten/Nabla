@@ -7,6 +7,9 @@ const TOKEN_TTL_SECONDS = 60 * 15;
 const PAGE_LIMIT = 200;
 const MAX_PAGES = 5;
 const LOOKUP_CONCURRENCY = 10;
+const ASC_FETCH_TIMEOUT_MS = 10_000;
+const LOOKUP_FETCH_TIMEOUT_MS = 5_000;
+const LOOKUP_BATCH_DELAY_MS = 3_500;
 
 interface CachedToken {
   token: string;
@@ -67,7 +70,10 @@ async function fetchTextReviews(appId: string): Promise<ReviewSample[]> {
     `https://api.appstoreconnect.apple.com/v1/apps/${appId}/customerReviews` +
     `?limit=${PAGE_LIMIT}&sort=-createdDate`;
   for (let page = 0; page < MAX_PAGES && url; page++) {
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(ASC_FETCH_TIMEOUT_MS),
+    });
     if (!res.ok) {
       throw new Error(`App Store Connect ${res.status}: ${await res.text()}`);
     }
@@ -96,11 +102,17 @@ interface LookupResponse {
 async function lookupOne(appId: string, country: string): Promise<LookupResult | null> {
   const url = `https://itunes.apple.com/lookup?id=${appId}&country=${country}`;
   try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
+    const res = await fetch(url, { signal: AbortSignal.timeout(LOOKUP_FETCH_TIMEOUT_MS) });
+    if (!res.ok) {
+      console.warn(`[itunes-lookup] ${country} HTTP ${res.status}`);
+      return null;
+    }
     const json = (await res.json()) as LookupResponse;
     return json.resultCount > 0 ? json.results[0] : null;
-  } catch {
+  } catch (err) {
+    console.warn(
+      `[itunes-lookup] ${country} ${err instanceof Error ? err.message : 'unknown'}`,
+    );
     return null;
   }
 }
@@ -118,6 +130,9 @@ async function fetchGlobalAggregate(appId: string): Promise<{ count: number; ave
         totalCount += c;
         weightedStars += a * c;
       }
+    }
+    if (i + LOOKUP_CONCURRENCY < APPLE_STOREFRONTS.length) {
+      await new Promise((r) => setTimeout(r, LOOKUP_BATCH_DELAY_MS));
     }
   }
   const average = totalCount > 0 ? weightedStars / totalCount : 0;
