@@ -9,6 +9,7 @@ import {
 import { Icon } from './Icon';
 import { fetchWeather } from '../data/weather';
 import { fetchStoreRating } from '../data/storeRating';
+import { fetchFeedback } from '../data/feedback';
 import type {
   DragHandleProps,
   FeedbackData,
@@ -43,14 +44,7 @@ export const WIDGET_DEFS: Record<WidgetType, WidgetDef> = {
   feedback: {
     title: 'TrainLCD · 新着フィードバック',
     icon: 'message-dots',
-    fetch: async (): Promise<FeedbackData> => ({
-      items: [
-        { stars: 5, text: '通勤で毎日使ってます。乗換案内よりこっちが好き。', author: 'たけし', when: '2時間前' },
-        { stars: 4, text: '中央線の英語表示お願いします', author: 'A. Chen', when: '5時間前' },
-        { stars: 5, text: 'デザインが綺麗で見やすい!', author: 'みーゆ', when: '今日' },
-      ],
-      unread: 3,
-    }),
+    fetch: fetchFeedback,
   },
   performance: {
     title: 'TrainLCD · パフォーマンス',
@@ -930,14 +924,17 @@ function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData |
       </>
     );
   }
+  if (data.items.length === 0) return <Skeleton size={size} />;
   if (size === 'md') {
     const top = data.items[0];
     return (
       <>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-          <span style={{ color: 'var(--accent)', fontSize: 11, letterSpacing: '0.04em' }}>
-            {starsText(top.stars)}
-          </span>
+          {top.stars > 0 && (
+            <span style={{ color: 'var(--accent)', fontSize: 11, letterSpacing: '0.04em' }}>
+              {starsText(top.stars)}
+            </span>
+          )}
           <span style={{ fontSize: 10, color: 'var(--ink-4)' }}>{top.when}</span>
         </div>
         <div
@@ -956,7 +953,8 @@ function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData |
         </div>
         <div style={{ flex: 1 }} />
         <div className="jp-text" style={{ fontSize: 10, color: 'var(--ink-4)' }}>
-          — {top.author} · 他 {data.unread - 1} 件
+          — {top.author}
+          {data.items.length > 1 ? ` · 他 ${data.items.length - 1} 件` : ''}
         </div>
       </>
     );
@@ -972,10 +970,15 @@ function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData |
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-            <span style={{ color: 'var(--accent)', fontSize: 10, letterSpacing: '0.05em' }}>
-              {starsText(it.stars)}
+            {it.stars > 0 && (
+              <span style={{ color: 'var(--accent)', fontSize: 10, letterSpacing: '0.05em' }}>
+                {starsText(it.stars)}
+              </span>
+            )}
+            <span style={{ fontSize: 10, color: 'var(--ink-4)' }}>
+              {it.stars > 0 ? '· ' : ''}
+              {it.when}
             </span>
-            <span style={{ fontSize: 10, color: 'var(--ink-4)' }}>· {it.when}</span>
           </div>
           <div
             className="jp-text"
