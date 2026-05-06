@@ -7,9 +7,11 @@ import {
   useState,
 } from 'react';
 import { Icon } from './Icon';
+import { fetchWeather } from '../data/weather';
 import type {
   DragHandleProps,
   FeedbackData,
+  HourlyForecast,
   PerformanceData,
   StoreRatingData,
   TasksData,
@@ -30,14 +32,7 @@ export const WIDGET_DEFS: Record<WidgetType, WidgetDef> = {
   weather: {
     title: '天気',
     icon: 'cloud-sun',
-    fetch: async (): Promise<WeatherData> => ({
-      location: '東京・渋谷',
-      temp: 18 + Math.round(Math.random() * 4 - 2),
-      feels: 17,
-      cond: ['晴れ', '曇り', '晴れ時々曇り'][Math.floor(Math.random() * 3)],
-      hourly: [16, 17, 18, 19, 19, 18, 17, 16].map((t) => t + Math.round(Math.random() * 2)),
-      precip: 10,
-    }),
+    fetch: fetchWeather,
   },
   storeRating: {
     title: 'TrainLCD · ストア評価',
@@ -149,9 +144,13 @@ export function useWidget(type: WidgetType, intervalSec: number) {
   const refresh = useCallback(async () => {
     const def = WIDGET_DEFS[type];
     if (!def) return;
-    const d = await def.fetch();
-    setData(d);
-    setLastRefresh(new Date());
+    try {
+      const d = await def.fetch();
+      setData(d);
+      setLastRefresh(new Date());
+    } catch (err) {
+      console.warn(`[widget:${type}] fetch failed`, err);
+    }
   }, [type]);
 
   useEffect(() => {
@@ -497,7 +496,8 @@ export function WidgetShell({
 
 function weatherIcon(cond: string | undefined) {
   if (!cond) return 'wx-sun';
-  if (cond.includes('雨')) return 'wx-rain';
+  if (cond.includes('雨') || cond.includes('みぞれ')) return 'wx-rain';
+  if (cond.includes('雪') || cond.includes('霧')) return 'wx-cloud';
   if (cond.includes('曇') && cond.includes('晴')) return 'wx-partly';
   if (cond.includes('曇')) return 'wx-cloud';
   return 'wx-sun';
@@ -559,153 +559,137 @@ function WeatherWidget({ size, data }: { size: WidgetSize; data: WeatherData | n
       </>
     );
   }
-  if (size === 'md') {
-    return (
-      <>
-        <div className="jp-text" style={{ fontSize: 11, color: 'var(--ink-4)' }}>
-          {data.location}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 4 }}>
-          <span
-            style={{
-              fontSize: 38,
-              fontWeight: 500,
-              letterSpacing: '-0.04em',
-              fontVariantNumeric: 'tabular-nums',
-            }}
-          >
-            {data.temp}°
-          </span>
-          <span style={{ color: 'var(--accent)', display: 'inline-flex', alignSelf: 'center' }}>
-            <Icon name={wxIcon} size={26} stroke={1.6} />
-          </span>
-          <span
-            className="jp-text"
-            style={{ fontSize: 11, color: 'var(--ink-3)', marginLeft: 'auto' }}
-          >
-            {data.cond}
-          </span>
-        </div>
-        <div className="jp-text" style={{ fontSize: 10.5, color: 'var(--ink-4)', marginTop: 4 }}>
-          体感 {data.feels}° · 降水 {data.precip}% · 湿度 62%
-        </div>
-        <div style={{ flex: 1 }} />
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 32 }}>
-          {data.hourly.map((t, i) => {
-            const min = Math.min(...data.hourly);
-            const max = Math.max(...data.hourly);
-            const bh = ((t - min) / (max - min || 1)) * 24 + 6;
-            return (
-              <div
-                key={i}
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 2,
-                }}
-              >
-                <div
-                  style={{
-                    width: '100%',
-                    height: bh,
-                    background: 'var(--accent)',
-                    borderRadius: 2,
-                    opacity: 0.4 + (i / data.hourly.length) * 0.6,
-                  }}
-                />
-              </div>
-            );
-          })}
-        </div>
-      </>
-    );
-  }
   return (
     <>
-      <div className="jp-text" style={{ fontSize: 12, color: 'var(--ink-3)' }}>
+      <div className="jp-text" style={{ fontSize: 11, color: 'var(--ink-4)' }}>
         {data.location}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 4 }}>
         <span
           style={{
-            fontSize: 56,
+            fontSize: 38,
             fontWeight: 500,
             letterSpacing: '-0.04em',
             fontVariantNumeric: 'tabular-nums',
-            lineHeight: 1,
           }}
         >
           {data.temp}°
         </span>
-        <span style={{ color: 'var(--accent)', display: 'inline-flex' }}>
-          <Icon name={wxIcon} size={36} stroke={1.6} />
+        <span style={{ color: 'var(--accent)', display: 'inline-flex', alignSelf: 'center' }}>
+          <Icon name={wxIcon} size={26} stroke={1.6} />
         </span>
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 2,
-            marginLeft: 'auto',
-            alignItems: 'flex-end',
-          }}
+        <span
+          className="jp-text"
+          style={{ fontSize: 11, color: 'var(--ink-3)', marginLeft: 'auto' }}
         >
-          <span className="jp-text" style={{ fontSize: 13, fontWeight: 500 }}>
-            {data.cond}
-          </span>
-          <span className="jp-text" style={{ fontSize: 11, color: 'var(--ink-4)' }}>
-            体感 {data.feels}° · 降水 {data.precip}%
-          </span>
-        </div>
+          {data.cond}
+        </span>
+      </div>
+      <div className="jp-text" style={{ fontSize: 10.5, color: 'var(--ink-4)', marginTop: 4 }}>
+        体感 {data.feels}° · 降水 {data.precip}% · 湿度 {data.humidity}%
       </div>
       <div style={{ flex: 1 }} />
-      <div style={{ marginTop: 12 }}>
-        <div
-          className="jp-text"
-          style={{ fontSize: 10, color: 'var(--ink-4)', marginBottom: 6, letterSpacing: '0.04em' }}
-        >
-          これからの時間
-        </div>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 60 }}>
-          {data.hourly.map((t, i) => {
-            const min = Math.min(...data.hourly);
-            const max = Math.max(...data.hourly);
-            const bh = ((t - min) / (max - min || 1)) * 40 + 14;
-            const labels = ['今', '15', '16', '17', '18', '19', '20', '21'];
-            return (
-              <div
-                key={i}
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 4,
-                  justifyContent: 'flex-end',
-                }}
-              >
-                <span
-                  style={{ fontSize: 9, color: 'var(--ink-3)', fontVariantNumeric: 'tabular-nums' }}
-                >
-                  {t}°
-                </span>
-                <div
-                  style={{
-                    width: '100%',
-                    height: bh,
-                    background: 'var(--accent)',
-                    borderRadius: 3,
-                    opacity: 0.3 + (i / data.hourly.length) * 0.7,
-                  }}
-                />
-                <span style={{ fontSize: 9, color: 'var(--ink-4)' }}>{labels[i]}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      <HourlyTempChart values={data.hourly} height={56} compact />
     </>
+  );
+}
+
+interface HourlyTempChartProps {
+  values: HourlyForecast[];
+  height?: number;
+  compact?: boolean;
+}
+
+function HourlyTempChart({ values, height = 80, compact = false }: HourlyTempChartProps) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [width, setWidth] = useState(252);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const ro = new ResizeObserver(() => setWidth(el.clientWidth || 252));
+    ro.observe(el);
+    setWidth(el.clientWidth || 252);
+    return () => ro.disconnect();
+  }, []);
+  if (!values || values.length < 2) return null;
+  const temps = values.map((v) => v.temp);
+  const min = Math.min(...temps);
+  const max = Math.max(...temps);
+  const range = max - min || 1;
+  const padX = 14;
+  const padTop = compact ? 16 : 22;
+  const padBottom = compact ? 14 : 18;
+  const innerH = height - padTop - padBottom;
+  const w = width;
+  const pts = values.map((v, i) => {
+    const x = padX + (i / (values.length - 1)) * (w - padX * 2);
+    const y = padTop + (1 - (v.temp - min) / range) * innerH;
+    return { x, y, temp: v.temp, at: v.at };
+  });
+  const linePath = pts
+    .map((p, i) => (i === 0 ? 'M' : 'L') + p.x.toFixed(2) + ' ' + p.y.toFixed(2))
+    .join(' ');
+  const areaPath = linePath + ` L ${w - padX} ${padTop + innerH} L ${padX} ${padTop + innerH} Z`;
+  const formatHour = (i: number, at: number) => {
+    if (i === 0) return '今';
+    return `${new Date(at * 1000).getHours()}時`;
+  };
+  return (
+    <div ref={ref} style={{ width: '100%' }}>
+      <svg width={w} height={height} style={{ display: 'block', overflow: 'visible' }}>
+        <line
+          x1={padX}
+          x2={w - padX}
+          y1={padTop + innerH}
+          y2={padTop + innerH}
+          stroke="var(--line)"
+          strokeWidth="1"
+        />
+        <path d={areaPath} fill="var(--accent)" opacity="0.12" />
+        <path
+          d={linePath}
+          fill="none"
+          stroke="var(--accent)"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        {pts.map((p, i) => {
+          const showLabel = compact ? i === 0 || i === pts.length - 1 || i % 2 === 0 : true;
+          return (
+            <g key={i}>
+              <circle cx={p.x} cy={p.y} r="2" fill="var(--accent)" />
+              {showLabel && (
+                <text
+                  x={p.x}
+                  y={p.y - 7}
+                  textAnchor="middle"
+                  className="jp-text"
+                  style={{
+                    fontSize: 10,
+                    fill: 'var(--ink-2)',
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  {p.temp}°
+                </text>
+              )}
+              {showLabel && (
+                <text
+                  x={p.x}
+                  y={padTop + innerH + (compact ? 11 : 13)}
+                  textAnchor="middle"
+                  className="jp-text"
+                  style={{ fontSize: 9.5, fill: 'var(--ink-4)' }}
+                >
+                  {formatHour(i, p.at)}
+                </text>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+    </div>
   );
 }
 

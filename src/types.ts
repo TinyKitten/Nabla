@@ -9,12 +9,18 @@ export interface WidgetItem {
   refreshInterval: number;
 }
 
+export interface HourlyForecast {
+  temp: number;
+  at: number;
+}
+
 export interface WeatherData {
   location: string;
   temp: number;
   feels: number;
+  humidity: number;
   cond: string;
-  hourly: number[];
+  hourly: HourlyForecast[];
   precip: number;
 }
 
