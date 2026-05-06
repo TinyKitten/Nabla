@@ -5,3 +5,5 @@ dist
 .vite
 *.tsbuildinfo
 .env.local
+keys/
+*.p8

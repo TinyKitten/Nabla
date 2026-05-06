@@ -8,6 +8,7 @@ import {
 } from 'react';
 import { Icon } from './Icon';
 import { fetchWeather } from '../data/weather';
+import { fetchStoreRating } from '../data/storeRating';
 import type {
   DragHandleProps,
   FeedbackData,
@@ -35,17 +36,9 @@ export const WIDGET_DEFS: Record<WidgetType, WidgetDef> = {
     fetch: fetchWeather,
   },
   storeRating: {
-    title: 'TrainLCD · ストア評価',
+    title: 'TrainLCD · App Store 評価',
     icon: 'star-line',
-    fetch: async (): Promise<StoreRatingData> => ({
-      stars: 4.7,
-      reviews: 1284 + Math.floor(Math.random() * 5),
-      delta: '+12 今週',
-      trend: [4.5, 4.5, 4.6, 4.6, 4.6, 4.7, 4.7],
-      breakdown: [62, 21, 10, 4, 3],
-      ranking: 14,
-      country: 'JP',
-    }),
+    fetch: fetchStoreRating,
   },
   feedback: {
     title: 'TrainLCD · 新着フィードバック',
@@ -812,7 +805,7 @@ function StoreRatingWidget({
           {renderStars(data.stars, 12)}
         </div>
         <div className="jp-text" style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 2 }}>
-          {data.reviews.toLocaleString()} 件 · ナビ #{data.ranking}
+          {data.reviews.toLocaleString()} 件
         </div>
         <div style={{ flex: 1 }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -856,7 +849,7 @@ function StoreRatingWidget({
         </span>
       </div>
       <div className="jp-text" style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>
-        {data.reviews.toLocaleString()} 件 · 過去7日 · {data.country} #{data.ranking}
+        {data.reviews.toLocaleString()} 件 · 過去7日
       </div>
       <div style={{ height: 32, marginTop: 10, color: 'var(--accent)', flexShrink: 0 }}>
         <Sparkline values={data.trend} height={32} fill />
