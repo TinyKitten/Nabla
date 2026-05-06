@@ -496,7 +496,8 @@ export function WidgetShell({
 
 function weatherIcon(cond: string | undefined) {
   if (!cond) return 'wx-sun';
-  if (cond.includes('雨')) return 'wx-rain';
+  if (cond.includes('雨') || cond.includes('みぞれ')) return 'wx-rain';
+  if (cond.includes('雪') || cond.includes('霧')) return 'wx-cloud';
   if (cond.includes('曇') && cond.includes('晴')) return 'wx-partly';
   if (cond.includes('曇')) return 'wx-cloud';
   return 'wx-sun';

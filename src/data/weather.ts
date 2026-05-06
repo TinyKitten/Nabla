@@ -52,6 +52,7 @@ interface OpenWeatherGeoResult {
 }
 
 let cachedWeather: { data: WeatherData; at: number } | null = null;
+let inFlight: Promise<WeatherData> | null = null;
 
 async function reverseGeocode(
   lat: number,
@@ -104,42 +105,49 @@ export function getCachedWeather(maxAgeMs = CACHE_TTL_MS): WeatherData | null {
 }
 
 export async function fetchWeather(): Promise<WeatherData> {
-  const apiKey = import.meta.env.VITE_OPENWEATHER_API_KEY;
-  if (!apiKey) {
-    setToolConnected('openWeather', false);
-    throw new Error('VITE_OPENWEATHER_API_KEY is not set');
-  }
-  let timer: ReturnType<typeof setTimeout> | null = null;
-  try {
-    const coords = await getCoords();
-    const ctrl = new AbortController();
-    timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
-    const base = 'https://api.openweathermap.org/data/2.5';
-    const q = `lat=${coords.lat}&lon=${coords.lon}&appid=${apiKey}&units=metric&lang=ja`;
-    const [current, forecast, geo] = await Promise.all([
-      fetchJson<OpenWeatherCurrent>(`${base}/weather?${q}`, ctrl.signal),
-      fetchJson<OpenWeatherForecast>(`${base}/forecast?${q}`, ctrl.signal),
-      reverseGeocode(coords.lat, coords.lon, apiKey, ctrl.signal),
-    ]);
-    const next8 = forecast.list.slice(0, 8);
-    const hourly = next8.map((it) => ({ temp: Math.round(it.main.temp), at: it.dt }));
-    const precip = Math.round(Math.max(0, ...next8.map((it) => it.pop ?? 0)) * 100);
-    const data: WeatherData = {
-      location: formatLocation(geo, current.name || coords.fallbackLabel || '現在地'),
-      temp: Math.round(current.main.temp),
-      feels: Math.round(current.main.feels_like),
-      humidity: current.main.humidity,
-      cond: localizeCondition(current.weather[0]?.id, current.weather[0]?.description ?? '—'),
-      hourly,
-      precip,
-    };
-    cachedWeather = { data, at: Date.now() };
-    setToolConnected('openWeather', true);
-    return data;
-  } catch (err) {
-    setToolConnected('openWeather', false);
-    throw err;
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
+  const cached = getCachedWeather();
+  if (cached) return cached;
+  if (inFlight) return inFlight;
+  inFlight = (async () => {
+    const apiKey = import.meta.env.VITE_OPENWEATHER_API_KEY;
+    if (!apiKey) {
+      setToolConnected('openWeather', false);
+      throw new Error('VITE_OPENWEATHER_API_KEY is not set');
+    }
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    try {
+      const coords = await getCoords();
+      const ctrl = new AbortController();
+      timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+      const base = 'https://api.openweathermap.org/data/2.5';
+      const q = `lat=${coords.lat}&lon=${coords.lon}&appid=${apiKey}&units=metric&lang=ja`;
+      const [current, forecast, geo] = await Promise.all([
+        fetchJson<OpenWeatherCurrent>(`${base}/weather?${q}`, ctrl.signal),
+        fetchJson<OpenWeatherForecast>(`${base}/forecast?${q}`, ctrl.signal),
+        reverseGeocode(coords.lat, coords.lon, apiKey, ctrl.signal),
+      ]);
+      const next8 = forecast.list.slice(0, 8);
+      const hourly = next8.map((it) => ({ temp: Math.round(it.main.temp), at: it.dt }));
+      const precip = Math.round(Math.max(0, ...next8.map((it) => it.pop ?? 0)) * 100);
+      const data: WeatherData = {
+        location: formatLocation(geo, current.name || coords.fallbackLabel || '現在地'),
+        temp: Math.round(current.main.temp),
+        feels: Math.round(current.main.feels_like),
+        humidity: current.main.humidity,
+        cond: localizeCondition(current.weather[0]?.id, current.weather[0]?.description ?? '—'),
+        hourly,
+        precip,
+      };
+      cachedWeather = { data, at: Date.now() };
+      setToolConnected('openWeather', true);
+      return data;
+    } catch (err) {
+      setToolConnected('openWeather', false);
+      throw err;
+    } finally {
+      if (timer) clearTimeout(timer);
+      inFlight = null;
+    }
+  })();
+  return inFlight;
 }

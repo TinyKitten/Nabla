@@ -56,7 +56,7 @@ npm run lint:fix     # oxlint --fix
 To enable the live weather widget, drop a free
 [OpenWeather](https://openweathermap.org/api) API key into `.env.local`:
 
-```
+```env
 VITE_OPENWEATHER_API_KEY=...
 ```
 
