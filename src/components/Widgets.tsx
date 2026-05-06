@@ -585,7 +585,7 @@ function WeatherWidget({ size, data }: { size: WidgetSize; data: WeatherData | n
         </span>
       </div>
       <div className="jp-text" style={{ fontSize: 10.5, color: 'var(--ink-4)', marginTop: 4 }}>
-        体感 {data.feels}° · 降水 {data.precip}% · 湿度 62%
+        体感 {data.feels}° · 降水 {data.precip}% · 湿度 {data.humidity}%
       </div>
       <div style={{ flex: 1 }} />
       <HourlyTempChart values={data.hourly} height={56} compact />

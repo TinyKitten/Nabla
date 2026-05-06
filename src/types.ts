@@ -18,6 +18,7 @@ export interface WeatherData {
   location: string;
   temp: number;
   feels: number;
+  humidity: number;
   cond: string;
   hourly: HourlyForecast[];
   precip: number;

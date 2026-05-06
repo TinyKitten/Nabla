@@ -12,7 +12,7 @@ const FETCH_TIMEOUT_MS = 8000;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 interface OpenWeatherCurrent {
-  main: { temp: number; feels_like: number };
+  main: { temp: number; feels_like: number; humidity: number };
   weather: { id: number; description: string }[];
   name?: string;
 }
@@ -86,7 +86,7 @@ function getCoords(): Promise<Coords> {
     navigator.geolocation.getCurrentPosition(
       (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
       () => resolve(FALLBACK),
-      { timeout: 8000, maximumAge: 5 * 60 * 1000 },
+      { timeout: FETCH_TIMEOUT_MS, maximumAge: CACHE_TTL_MS },
     );
   });
 }
@@ -109,10 +109,11 @@ export async function fetchWeather(): Promise<WeatherData> {
     setToolConnected('openWeather', false);
     throw new Error('VITE_OPENWEATHER_API_KEY is not set');
   }
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+  let timer: ReturnType<typeof setTimeout> | null = null;
   try {
     const coords = await getCoords();
+    const ctrl = new AbortController();
+    timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
     const base = 'https://api.openweathermap.org/data/2.5';
     const q = `lat=${coords.lat}&lon=${coords.lon}&appid=${apiKey}&units=metric&lang=ja`;
     const [current, forecast, geo] = await Promise.all([
@@ -127,6 +128,7 @@ export async function fetchWeather(): Promise<WeatherData> {
       location: formatLocation(geo, current.name || coords.fallbackLabel || '現在地'),
       temp: Math.round(current.main.temp),
       feels: Math.round(current.main.feels_like),
+      humidity: current.main.humidity,
       cond: localizeCondition(current.weather[0]?.id, current.weather[0]?.description ?? '—'),
       hourly,
       precip,
@@ -138,6 +140,6 @@ export async function fetchWeather(): Promise<WeatherData> {
     setToolConnected('openWeather', false);
     throw err;
   } finally {
-    clearTimeout(timer);
+    if (timer) clearTimeout(timer);
   }
 }
