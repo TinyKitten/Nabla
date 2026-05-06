@@ -1,0 +1,16 @@
+.artboard-chat {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+@keyframes voice-bar {
+  from { transform: scaleY(0.4); }
+  to { transform: scaleY(1.4); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}

@@ -1,0 +1,381 @@
+import { useEffect, useRef, useState } from 'react';
+import { useChat } from '../hooks/useChat.js';
+import { Icon } from './Icon.jsx';
+import { ToolsBadge } from './ToolsBadge.jsx';
+import { PinnedStrip } from './PinnedStrip.jsx';
+import { MessageRow } from './MessageRow.jsx';
+import { ChatComposer } from './ChatComposer.jsx';
+import { WidgetGrid } from './WidgetGrid.jsx';
+import { WIDGET_DEFS } from './Widgets.jsx';
+
+const PINNED_INITIAL = [
+  { id: 'h2', type: 'storeRating', size: 'sm', refreshInterval: 1800 },
+  { id: 'h3', type: 'feedback', size: 'sm', refreshInterval: 600 },
+  { id: 'h4', type: 'tasks', size: 'sm', refreshInterval: 0 },
+];
+
+const WIDGETS_INITIAL = [
+  { id: 'd0', type: 'weather', size: 'md', refreshInterval: 600 },
+  { id: 'd1', type: 'storeRating', size: 'lg', refreshInterval: 1800 },
+  { id: 'd2', type: 'performance', size: 'md', refreshInterval: 1800 },
+  { id: 'd3', type: 'feedback', size: 'lg', refreshInterval: 600 },
+  { id: 'd4', type: 'tasks', size: 'md', refreshInterval: 0 },
+];
+
+const SHORTCUTS = [
+  { label: '今日の天気', q: '今日の天気は?', icon: 'cloud-sun' },
+  { label: 'ストア評価', q: 'TrainLCDの評価', icon: 'star' },
+  { label: '新着レビュー', q: '新しいフィードバックある?', icon: 'message-dots' },
+  { label: 'パフォーマンス', q: 'パフォーマンス推移は?', icon: 'activity' },
+];
+
+export function ChatLayout() {
+  const initial = [
+    {
+      id: 'hinit',
+      role: 'ai',
+      text: 'おはようございます、きったんさん。上のピン留めはいつでも見えるウィジェット、右パネルは追加のウィジェット一覧です。気になることがあれば声をかけてください。',
+      time: '09:02',
+    },
+  ];
+  const { messages, input, setInput, send, stop, streaming } = useChat(initial);
+  const [pinned, setPinned] = useState(PINNED_INITIAL);
+  const [widgets, setWidgets] = useState(WIDGETS_INITIAL);
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth < 720,
+  );
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 720);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  const [panelOpen, setPanelOpen] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth >= 720 : true,
+  );
+  const scrollRef = useRef(null);
+
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [messages]);
+
+  const openWidgetDetail = (w) => {
+    const def = WIDGET_DEFS[w.type];
+    send(`${def.title}の詳しい状況を教えて`);
+  };
+
+  const unpinWidget = (id) => {
+    const w = pinned.find((x) => x.id === id);
+    if (!w) return;
+    setPinned((p) => p.filter((x) => x.id !== id));
+    if (widgets.some((d) => d.type === w.type)) return;
+    setWidgets((d) => [...d, { ...w, size: 'md' }]);
+  };
+  const pinWidget = (id, beforeIdx) => {
+    const w = widgets.find((x) => x.id === id);
+    if (!w) return;
+    if (pinned.some((p) => p.type === w.type)) return;
+    const compact = {
+      id: 'p-' + w.id,
+      type: w.type,
+      size: 'sm',
+      refreshInterval: w.refreshInterval,
+    };
+    setPinned((p) => {
+      const next = [...p];
+      const idx = beforeIdx == null ? next.length : beforeIdx;
+      next.splice(idx, 0, compact);
+      return next;
+    });
+  };
+
+  return (
+    <div className="chat-root" style={{ display: 'flex', height: '100%', background: 'var(--bg)' }}>
+      {/* Left rail */}
+      <aside
+        style={{
+          width: isMobile ? 0 : 60,
+          flexShrink: 0,
+          borderRight: isMobile ? 'none' : '1px solid var(--line)',
+          background: 'var(--bg-elev)',
+          display: isMobile ? 'none' : 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          padding: '14px 0',
+          gap: 4,
+        }}
+      >
+        <div
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 9,
+            background: 'var(--accent)',
+            color: '#fff',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: 8,
+          }}
+        >
+          <Icon name="logo" size={17} />
+        </div>
+        <button
+          className="btn-icon"
+          style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
+          title="新しいチャット"
+        >
+          <Icon name="edit" size={16} />
+        </button>
+        <div style={{ flex: 1 }} />
+        <button className="btn-icon" title="設定">
+          <Icon name="settings" size={16} />
+        </button>
+        <div className="avatar" style={{ marginTop: 4 }}>
+          KT
+        </div>
+      </aside>
+
+      {/* Center */}
+      <main
+        style={{
+          flex: '1 1 0%',
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          borderRight: panelOpen ? '1px solid var(--line)' : 'none',
+        }}
+      >
+        <header
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: isMobile ? '10px 14px' : '12px 24px',
+            borderBottom: '1px solid var(--line)',
+            background: 'var(--bg)',
+          }}
+        >
+          <div className="jp-text" style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.01em' }}>Nabla</div>
+            <ToolsBadge />
+          </div>
+          <button
+            className="btn-icon"
+            onClick={() => setPanelOpen(!panelOpen)}
+            title={panelOpen ? 'パネルを閉じる' : 'パネルを開く'}
+            style={{
+              background: panelOpen ? 'var(--accent-soft)' : 'transparent',
+              color: panelOpen ? 'var(--accent)' : 'var(--ink-3)',
+            }}
+          >
+            <Icon name="panel" size={16} />
+          </button>
+          <button className="btn-icon">
+            <Icon name="more" size={16} />
+          </button>
+        </header>
+
+        <PinnedStrip
+          widgets={pinned}
+          onReorder={setPinned}
+          onOpen={openWidgetDetail}
+          onRemove={(id) => setPinned((p) => p.filter((w) => w.id !== id))}
+          onAcceptFromGrid={pinWidget}
+          onAcceptInline={(type, beforeIdx) => {
+            if (pinned.some((p) => p.type === type)) return;
+            const id = 'p-inline-' + Date.now();
+            setPinned((p) => {
+              const next = [...p];
+              next.splice(Math.min(beforeIdx, next.length), 0, {
+                id,
+                type,
+                size: 'sm',
+                refreshInterval: 1800,
+              });
+              return next;
+            });
+          }}
+          onAdd={() => send('新しいウィジェットを追加')}
+        />
+
+        <div
+          ref={scrollRef}
+          className="scroll-area"
+          style={{ flex: 1, padding: isMobile ? '16px 14px 8px' : '24px 28px 8px' }}
+        >
+          <div style={{ maxWidth: 660, margin: '0 auto' }}>
+            {messages.map((m) => (
+              <MessageRow
+                key={m.id}
+                m={m}
+                pinnedTypes={pinned.map((w) => w.type)}
+                onPinInline={(type) => {
+                  if (pinned.some((p) => p.type === type)) return;
+                  const id = 'p-inline-' + Date.now();
+                  setPinned((p) => [...p, { id, type, size: 'sm', refreshInterval: 1800 }]);
+                }}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div style={{ padding: isMobile ? '8px 14px 0' : '8px 28px 0' }}>
+          <div
+            style={{
+              maxWidth: 660,
+              margin: '0 auto',
+              display: 'flex',
+              gap: 6,
+              flexWrap: 'wrap',
+            }}
+          >
+            {SHORTCUTS.map((s) => (
+              <button
+                key={s.label}
+                className="chip jp-text"
+                onClick={() => send(s.q)}
+                style={{
+                  fontSize: 12,
+                  padding: '5px 12px 5px 10px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <Icon
+                  name={s.icon}
+                  size={12}
+                  stroke={1.7}
+                  style={{ color: 'var(--ink-3)', flexShrink: 0 }}
+                />
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ padding: isMobile ? '10px 14px 16px' : '12px 28px 22px' }}>
+          <div style={{ maxWidth: 660, margin: '0 auto' }}>
+            <ChatComposer
+              value={input}
+              onChange={setInput}
+              onSend={() => send()}
+              onStop={stop}
+              streaming={streaming}
+            />
+          </div>
+        </div>
+      </main>
+
+      {/* Right widgets panel */}
+      {isMobile && panelOpen && (
+        <div
+          onClick={() => setPanelOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 90,
+            background: 'rgba(0,0,0,0.32)',
+            transition: 'opacity 0.2s',
+          }}
+        />
+      )}
+      <aside
+        style={{
+          flex: isMobile ? 'none' : panelOpen ? '0 0 332px' : '0 0 0px',
+          width: isMobile ? (panelOpen ? 'min(332px, 88vw)' : 0) : panelOpen ? 332 : 0,
+          background: 'var(--bg-sunken)',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          opacity: panelOpen ? 1 : 0,
+          transition:
+            'flex-basis 0.28s cubic-bezier(0.4, 0, 0.2, 1), width 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease, transform 0.28s cubic-bezier(0.4, 0, 0.2, 1)',
+          pointerEvents: panelOpen ? 'auto' : 'none',
+          ...(isMobile
+            ? {
+                position: 'fixed',
+                top: 0,
+                right: 0,
+                bottom: 0,
+                zIndex: 100,
+                borderLeft: '1px solid var(--line)',
+                boxShadow: panelOpen ? '0 0 40px rgba(0,0,0,0.18)' : 'none',
+                transform: panelOpen ? 'translateX(0)' : 'translateX(100%)',
+              }
+            : {}),
+        }}
+      >
+        <div
+          style={{
+            width: 332,
+            flexShrink: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100%',
+            transform: panelOpen ? 'translateX(0)' : 'translateX(20px)',
+            transition: 'transform 0.28s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+        >
+          <header
+            style={{
+              padding: '14px 24px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              borderBottom: '1px solid var(--line)',
+            }}
+          >
+            <Icon name="panel" size={14} style={{ color: 'var(--accent)' }} />
+            <div
+              className="jp-text"
+              style={{ flex: 1, fontSize: 13, fontWeight: 600, letterSpacing: '-0.01em' }}
+            >
+              ウィジェット
+            </div>
+            <button
+              className="btn-icon"
+              title="ウィジェット追加"
+              onClick={() => send('新しいウィジェットを追加')}
+            >
+              <Icon name="plus" size={15} />
+            </button>
+            {isMobile && (
+              <button className="btn-icon" title="閉じる" onClick={() => setPanelOpen(false)}>
+                <Icon name="x" size={15} />
+              </button>
+            )}
+          </header>
+
+          <div
+            className="scroll-area"
+            style={{ flex: 1, padding: '20px 24px 24px' }}
+            onDragOver={(e) => {
+              if (e.dataTransfer.types.includes('application/x-pinned-id')) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+              }
+            }}
+            onDrop={(e) => {
+              const id = e.dataTransfer.getData('application/x-pinned-id');
+              if (id) {
+                e.preventDefault();
+                unpinWidget(id);
+              }
+            }}
+          >
+            <WidgetGrid
+              widgets={widgets}
+              onReorder={setWidgets}
+              onOpen={openWidgetDetail}
+              onRemove={(id) => setWidgets((d) => d.filter((w) => w.id !== id))}
+              onPin={(id) => pinWidget(id, pinned.length)}
+              onUnpin={(type) => setPinned((p) => p.filter((x) => x.type !== type))}
+              pinnedTypes={pinned.map((w) => w.type)}
+            />
+          </div>
+        </div>
+      </aside>
+    </div>
+  );
+}
