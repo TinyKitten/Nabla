@@ -13,8 +13,25 @@ const CACHE_TTL_MS = 5 * 60 * 1000;
 
 interface OpenWeatherCurrent {
   main: { temp: number; feels_like: number };
-  weather: { description: string }[];
+  weather: { id: number; description: string }[];
   name?: string;
+}
+
+function localizeCondition(id: number | undefined, fallback: string): string {
+  if (id == null) return fallback;
+  if (id >= 200 && id < 300) return '雷雨';
+  if (id >= 300 && id < 400) return '小雨';
+  if (id === 511) return 'みぞれ';
+  if (id >= 500 && id < 504) return '雨';
+  if (id >= 504 && id < 600) return '強い雨';
+  if (id >= 600 && id < 700) return '雪';
+  if (id >= 700 && id < 800) return '霧';
+  if (id === 800) return '晴れ';
+  if (id === 801) return '晴れ';
+  if (id === 802) return '晴れ時々曇り';
+  if (id === 803) return '曇り時々晴れ';
+  if (id === 804) return '曇り';
+  return fallback;
 }
 
 interface OpenWeatherForecastItem {
@@ -109,7 +126,7 @@ export async function fetchWeather(): Promise<WeatherData> {
       location: formatLocation(geo, current.name || coords.fallbackLabel || '現在地'),
       temp: Math.round(current.main.temp),
       feels: Math.round(current.main.feels_like),
-      cond: current.weather[0]?.description ?? '—',
+      cond: localizeCondition(current.weather[0]?.id, current.weather[0]?.description ?? '—'),
       hourly,
       precip,
     };
