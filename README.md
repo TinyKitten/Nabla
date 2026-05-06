@@ -29,6 +29,8 @@ A floating **Tweaks** button toggles light/dark mode and the accent color.
 ## Stack
 
 - React 18 + Vite
+- TypeScript (strict, project references)
+- [Oxlint](https://oxc.rs/docs/guide/usage/linter.html) for fast linting
 - Plain CSS variables (no CSS-in-JS, no Tailwind)
 - HTML5 drag-and-drop for widget reordering and pinning
 - All widget data is currently mocked client-side; the eventual plan is to wire
@@ -39,8 +41,11 @@ A floating **Tweaks** button toggles light/dark mode and the accent color.
 
 ```bash
 npm install
-npm run dev      # http://localhost:5173
-npm run build    # production bundle in dist/
+npm run dev          # http://localhost:5173
+npm run build        # production bundle in dist/
+npm run typecheck    # tsc -b --noEmit
+npm run lint         # oxlint
+npm run lint:fix     # oxlint --fix
 ```
 
 ## Origin
