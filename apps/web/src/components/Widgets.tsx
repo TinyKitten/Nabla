@@ -9,6 +9,7 @@ import {
 import { Icon } from './Icon';
 import { fetchWeather } from '../data/weather';
 import { fetchStoreRating } from '../data/storeRating';
+import { fetchTasks, toggleTaskDone, TASKS_CHANGED_EVENT } from '../data/tasks';
 import type {
   DragHandleProps,
   FeedbackData,
@@ -67,14 +68,7 @@ export const WIDGET_DEFS: Record<WidgetType, WidgetDef> = {
   tasks: {
     title: '今日のタスク',
     icon: 'check-square',
-    fetch: async (): Promise<TasksData> => ({
-      items: [
-        { id: 't1', text: 'TrainLCD v3.4 のリリースノート作成', done: false },
-        { id: 't2', text: 'デザインレビュー @ 15:00', done: false },
-        { id: 't3', text: '請求書の確認', done: true },
-        { id: 't4', text: 'ストア返信を3件返す', done: false },
-      ],
-    }),
+    fetch: fetchTasks,
   },
 };
 
@@ -152,6 +146,13 @@ export function useWidget(type: WidgetType, intervalSec: number) {
     const id = window.setInterval(refresh, intervalSec * 1000);
     return () => window.clearInterval(id);
   }, [refresh, intervalSec]);
+
+  useEffect(() => {
+    if (type !== 'tasks') return undefined;
+    const onChange = () => refresh();
+    window.addEventListener(TASKS_CHANGED_EVENT, onChange);
+    return () => window.removeEventListener(TASKS_CHANGED_EVENT, onChange);
+  }, [type, refresh]);
 
   return { data, lastRefresh, refresh };
 }
@@ -1057,15 +1058,7 @@ function PerfWidget({ size, data }: { size: WidgetSize; data: PerformanceData | 
   );
 }
 
-function TasksWidget({
-  size,
-  data,
-  onToggle,
-}: {
-  size: WidgetSize;
-  data: TasksData | null;
-  onToggle?: (id: string) => void;
-}) {
+function TasksWidget({ size, data }: { size: WidgetSize; data: TasksData | null }) {
   const [localItems, setLocalItems] = useState<TasksData['items'] | null>(null);
   useEffect(() => {
     if (data) setLocalItems(data.items);
@@ -1076,7 +1069,7 @@ function TasksWidget({
     setLocalItems((prev) =>
       prev ? prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t)) : prev,
     );
-    if (onToggle) onToggle(id);
+    toggleTaskDone(id);
   };
   const undone = items.filter((i) => !i.done).length;
   if (size === 'sm') {
@@ -1155,7 +1148,6 @@ interface WidgetProps {
   onOpen?: () => void;
   onRemove?: () => void;
   onRefresh?: () => void;
-  onToggleTask?: (id: string) => void;
   onPin?: () => void;
   onUnpin?: () => void;
   isPinned?: boolean;
@@ -1168,7 +1160,6 @@ export function Widget({
   onOpen,
   onRemove,
   onRefresh,
-  onToggleTask,
   onPin,
   onUnpin,
   isPinned,
@@ -1189,13 +1180,7 @@ export function Widget({
       case 'performance':
         return <PerfWidget size={widget.size} data={data as PerformanceData | null} />;
       case 'tasks':
-        return (
-          <TasksWidget
-            size={widget.size}
-            data={data as TasksData | null}
-            onToggle={onToggleTask}
-          />
-        );
+        return <TasksWidget size={widget.size} data={data as TasksData | null} />;
     }
   };
 

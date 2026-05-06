@@ -11,3 +11,17 @@ export interface StoreRatingResponse {
   breakdown: number[];
   sources: { appStore: boolean };
 }
+
+export interface TasksResponse {
+  items: {
+    id: string;
+    identifier: string;
+    text: string;
+    url: string;
+    priority: number;
+    dueDate: string | null;
+    stateName: string;
+    stateType: string;
+  }[];
+  sources: { linear: boolean };
+}

@@ -1,12 +1,13 @@
 import { useSyncExternalStore } from 'react';
 
-export type ToolName = 'openWeather' | 'appStoreConnect';
+export type ToolName = 'openWeather' | 'appStoreConnect' | 'linear';
 
 export type ToolConnectionState = Record<ToolName, boolean>;
 
 let state: ToolConnectionState = {
   openWeather: false,
   appStoreConnect: false,
+  linear: false,
 };
 
 const listeners = new Set<() => void>();

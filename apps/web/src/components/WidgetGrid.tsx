@@ -58,7 +58,6 @@ interface WidgetGridProps {
   onOpen?: (w: WidgetItem) => void;
   onRemove?: (id: string) => void;
   onRefresh?: (id: string) => void;
-  onToggleTask?: (id: string) => void;
   onPin?: (id: string) => void;
   onUnpin?: (type: WidgetType) => void;
   accent?: string;
@@ -71,7 +70,6 @@ export function WidgetGrid({
   onOpen,
   onRemove,
   onRefresh,
-  onToggleTask,
   onPin,
   onUnpin,
   accent,
@@ -143,7 +141,6 @@ export function WidgetGrid({
               onOpen={() => onOpen && onOpen(w)}
               onRemove={() => onRemove && onRemove(w.id)}
               onRefresh={() => onRefresh && onRefresh(w.id)}
-              onToggleTask={onToggleTask}
               onPin={onPin && !isPinned ? () => onPin(w.id) : undefined}
               onUnpin={onUnpin && isPinned ? () => onUnpin(w.type) : undefined}
               isPinned={isPinned}
