@@ -926,7 +926,23 @@ function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData |
       </>
     );
   }
-  if (data.items.length === 0) return <Skeleton size={size} />;
+  if (data.items.length === 0) {
+    return (
+      <div
+        className="jp-text"
+        style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 12,
+          color: 'var(--ink-4)',
+        }}
+      >
+        フィードバックはまだありません
+      </div>
+    );
+  }
   if (size === 'md') {
     const top = data.items[0];
     return (
