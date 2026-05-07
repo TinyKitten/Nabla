@@ -7,6 +7,8 @@ on:
 jobs:
   oxlint:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -16,7 +18,7 @@ jobs:
         id: node-modules
         with:
           path: node_modules
-          key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          key: node-modules-${{ runner.os }}-node22-${{ hashFiles('package-lock.json') }}
       - if: steps.node-modules.outputs.cache-hit != 'true'
         run: npm ci
       - run: npm run lint
