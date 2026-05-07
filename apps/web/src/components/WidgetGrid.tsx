@@ -146,10 +146,7 @@ export function WidgetGrid({
               isPinned={isPinned}
               dragHandleProps={{
                 draggable: true,
-                onDragStart: (e) => {
-                  e.dataTransfer.setData('application/x-pinned-type', w.type);
-                  return handleDragStart(w.id)(e);
-                },
+                onDragStart: handleDragStart(w.id),
                 onDragEnd: () => {
                   setDraggingId(null);
                   setOverId(null);

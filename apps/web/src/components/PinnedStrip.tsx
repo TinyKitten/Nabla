@@ -90,7 +90,7 @@ export function PinnedStrip({
     const inlineType = e.dataTransfer.getData('application/x-inline-type') as WidgetType | '';
     if (gridId) {
       e.preventDefault();
-      const gridType = e.dataTransfer.getData('application/x-pinned-type') as WidgetType | '';
+      const gridType = window.__draggingGridWidgetType;
       if (gridType && pinnedTypes.includes(gridType)) {
         setDraggingId(null);
         setDropIdx(null);
