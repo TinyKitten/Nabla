@@ -32,20 +32,22 @@ async function feedbackReply(): Promise<string> {
   try {
     const f = getCachedFeedback() ?? (await fetchFeedback());
     if (f.items.length === 0) {
-      return '新着のフィードバックはありません。';
+      return '新着のレビューもしくはフィードバックはありません。';
     }
     const ios = f.items.filter((i) => i.source === 'appStore').length;
     const android = f.items.filter((i) => i.source === 'googlePlay').length;
     const issues = f.items.filter((i) => i.source === 'github').length;
     const samples = f.items.slice(0, 3).map((i) => `「${i.text.slice(0, 40)}」`).join('、');
-    const parts: string[] = [];
-    if (ios) parts.push(`iOS ${ios} 件`);
-    if (android) parts.push(`Android ${android} 件`);
-    if (issues) parts.push(`Issue ${issues} 件`);
-    const breakdown = parts.join(' / ');
-    return `直近の新着フィードバックは ${f.items.length} 件 (${breakdown})。${samples} など。Issue 化したいものがあれば教えてください。`;
+    const reviewParts: string[] = [];
+    if (ios) reviewParts.push(`iOS ${ios} 件`);
+    if (android) reviewParts.push(`Android ${android} 件`);
+    const segments: string[] = [];
+    if (reviewParts.length) segments.push(`レビュー ${reviewParts.join(' / ')}`);
+    if (issues) segments.push(`GitHub フィードバック ${issues} 件`);
+    const breakdown = segments.join('、');
+    return `直近の新着は ${f.items.length} 件です(${breakdown})。${samples} など。Issue 化したいものがあれば教えてください。`;
   } catch {
-    return 'フィードバックを取得できませんでした。App Store Connect / Google Play Console / GitHub の接続設定を確認してください。';
+    return 'レビューもしくはフィードバックを取得できませんでした。App Store Connect / Google Play Console / GitHub の接続設定を確認してください。';
   }
 }
 
