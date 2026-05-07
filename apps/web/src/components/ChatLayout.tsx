@@ -7,7 +7,8 @@ import { MessageRow } from './MessageRow';
 import { ChatComposer } from './ChatComposer';
 import { WidgetGrid } from './WidgetGrid';
 import { WIDGET_DEFS } from './Widgets';
-import type { Message, WidgetItem, WidgetType } from '../types';
+import type { FeedbackEntry, Message, WidgetItem, WidgetType } from '../types';
+import { FEEDBACK_DETAIL_EVENT } from './Widgets';
 import type { IconName } from './Icon';
 
 const PINNED_INITIAL: WidgetItem[] = [
@@ -54,7 +55,7 @@ export function ChatLayout() {
       time: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
     },
   ];
-  const { messages, input, setInput, send, stop, streaming } = useChat(initial);
+  const { messages, input, setInput, send, stop, streaming, sendFeedbackDetail } = useChat(initial);
   const [pinned, setPinned] = useState<WidgetItem[]>(PINNED_INITIAL);
   const [widgets, setWidgets] = useState<WidgetItem[]>(WIDGETS_INITIAL);
   const [isMobile, setIsMobile] = useState(
@@ -73,6 +74,15 @@ export function ChatLayout() {
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages]);
+
+  useEffect(() => {
+    const onDetail = (e: Event) => {
+      const ce = e as CustomEvent<FeedbackEntry>;
+      if (ce.detail) sendFeedbackDetail(ce.detail);
+    };
+    window.addEventListener(FEEDBACK_DETAIL_EVENT, onDetail);
+    return () => window.removeEventListener(FEEDBACK_DETAIL_EVENT, onDetail);
+  }, [sendFeedbackDetail]);
 
   const openWidgetDetail = (w: WidgetItem) => {
     const def = WIDGET_DEFS[w.type];

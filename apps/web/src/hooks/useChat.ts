@@ -4,7 +4,7 @@ import { fetchStoreRating, getCachedStoreRating } from '../data/storeRating';
 import { fetchFeedback, getCachedFeedback } from '../data/feedback';
 import { fetchPerformance, getCachedPerformance } from '../data/performance';
 import { addLocalTask, fetchTasks, getCachedTasks } from '../data/tasks';
-import type { Message, ToolCall, WidgetType } from '../types';
+import type { FeedbackEntry, Message, ToolCall, WidgetType } from '../types';
 
 interface QuickReply {
   tools: ToolCall[];
@@ -272,5 +272,78 @@ export function useChat(initialMessages: Message[] = []) {
     );
   }, []);
 
-  return { messages, setMessages, input, setInput, send, stop, streaming };
+  const sendFeedbackDetail = useCallback(
+    (entry: FeedbackEntry) => {
+      if (streaming) return;
+      const now = new Date();
+      const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const sourceLabel =
+        entry.source === 'github'
+          ? 'GitHub フィードバック'
+          : entry.source === 'appStore'
+            ? 'App Store レビュー'
+            : 'Google Play レビュー';
+      const userText = entry.title
+        ? `「${entry.title}」の詳細を教えて`
+        : 'このレビューの詳細を教えて';
+      const titleLine = entry.title ? `**${entry.title}**\n\n` : '';
+      const bodyLine = entry.text || '(本文なし)';
+      const starsPart = entry.stars > 0 ? `★${entry.stars} · ` : '';
+      const reply = `${titleLine}${bodyLine}\n\n— ${sourceLabel} · ${starsPart}${entry.when} · ${entry.author}`;
+
+      const aiId = 'a' + Date.now();
+      const userMsg: Message = { id: 'u' + Date.now(), role: 'user', text: userText, time };
+      const proxiedImages = entry.images?.map((u) => {
+        try {
+          const parsed = new URL(u);
+          const needsProxy =
+            parsed.protocol === 'https:' &&
+            (parsed.hostname === 'github.com' ||
+              parsed.hostname.endsWith('.githubusercontent.com'));
+          return needsProxy ? `/api/github-image?url=${encodeURIComponent(u)}` : u;
+        } catch {
+          return u;
+        }
+      });
+      const aiMsg: Message = {
+        id: aiId,
+        role: 'ai',
+        text: '',
+        time,
+        streaming: true,
+        tools: [],
+        labels: entry.labels,
+        images: proxiedImages,
+      };
+      setMessages((prev) => [...prev, userMsg, aiMsg]);
+      setStreaming(true);
+      streamRef.current = aiId;
+
+      const chars = [...reply];
+      let i = 0;
+      const tick = () => {
+        if (streamRef.current !== aiId) return;
+        i = Math.min(chars.length, i + Math.max(1, Math.round(chars.length / 60)));
+        const partial = chars.slice(0, i).join('');
+        setMessages((prev) =>
+          prev.map((m) => (m.id === aiId ? { ...m, text: partial } : m)),
+        );
+        if (i < chars.length) {
+          setTimeout(tick, 28);
+        } else {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === aiId ? { ...m, streaming: false, actions: true } : m,
+            ),
+          );
+          setStreaming(false);
+          streamRef.current = null;
+        }
+      };
+      setTimeout(tick, 200);
+    },
+    [streaming],
+  );
+
+  return { messages, setMessages, input, setInput, send, stop, streaming, sendFeedbackDetail };
 }

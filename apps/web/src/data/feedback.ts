@@ -5,11 +5,14 @@ const FETCH_TIMEOUT_MS = 15_000;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 interface FeedbackEntrySnapshot {
+  title?: string;
   text: string;
   author: string;
   createdAt: number;
   stars: number;
   source: FeedbackSource;
+  labels?: { name: string; color: string }[];
+  images?: string[];
 }
 
 interface FeedbackResponse {
@@ -45,10 +48,13 @@ function relativeTime(ts: number, now: number = Date.now()): string {
 function toEntry(snap: FeedbackEntrySnapshot): FeedbackEntry {
   return {
     stars: snap.stars,
+    title: snap.title,
     text: snap.text,
     author: snap.author,
     when: relativeTime(snap.createdAt),
     source: snap.source,
+    labels: snap.labels,
+    images: snap.images,
   };
 }
 

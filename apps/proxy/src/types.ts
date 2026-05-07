@@ -42,12 +42,20 @@ export interface PerformanceResponse {
 
 export type FeedbackSource = 'github' | 'appStore' | 'googlePlay';
 
+export interface GitHubLabel {
+  name: string;
+  color: string;
+}
+
 export interface FeedbackEntrySnapshot {
+  title?: string;
   text: string;
   author: string;
   createdAt: number;
   stars: number;
   source: FeedbackSource;
+  labels?: GitHubLabel[];
+  images?: string[];
 }
 
 export interface FeedbackResponse {
