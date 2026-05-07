@@ -78,10 +78,10 @@ async function loadTasks(): Promise<TasksResponse> {
   }
 }
 
-function parseCoord(value: string | null): number | null {
-  if (value == null || value === '') return null;
+function parseCoord(value: string | null, min: number, max: number): number | null {
+  if (value == null || value.trim() === '') return null;
   const n = Number(value);
-  return Number.isFinite(n) ? n : null;
+  return Number.isFinite(n) && n >= min && n <= max ? n : null;
 }
 
 async function loadWeather(lat: number, lon: number): Promise<WeatherResponse> {
@@ -146,8 +146,8 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
       return;
     }
     const url = new URL(req.url, 'http://localhost');
-    const lat = parseCoord(url.searchParams.get('lat'));
-    const lon = parseCoord(url.searchParams.get('lon'));
+    const lat = parseCoord(url.searchParams.get('lat'), -90, 90);
+    const lon = parseCoord(url.searchParams.get('lon'), -180, 180);
     if (lat == null || lon == null) {
       send(res, 400, { error: 'lat / lon query params are required' });
       return;
