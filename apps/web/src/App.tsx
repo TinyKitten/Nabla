@@ -1,5 +1,8 @@
 import { useEffect } from 'react';
-import { ChatLayout } from './components/ChatLayout';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { AppShell } from './components/AppShell';
+import { ChatView } from './components/ChatView';
+import { Dashboard } from './components/Dashboard';
 import {
   TweaksPanel,
   TweakSection,
@@ -23,12 +26,15 @@ export default function App() {
 
   return (
     <>
-      <div
-        className="artboard-chat"
-        data-screen-label="Chat"
-        style={{ width: '100vw', height: '100vh' }}
-      >
-        <ChatLayout />
+      <div className="artboard-chat" style={{ width: '100vw', height: '100vh' }}>
+        <BrowserRouter>
+          <Routes>
+            <Route element={<AppShell />}>
+              <Route index element={<Dashboard />} />
+              <Route path="chat" element={<ChatView />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
       </div>
 
       <TweaksPanel title="Tweaks">

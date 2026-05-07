@@ -1,6 +1,12 @@
 import { type DragEvent, Fragment, useEffect, useMemo, useState } from 'react';
 import { Icon } from './Icon';
 import { Widget } from './Widgets';
+import { DropIndicator } from './DropIndicator';
+import {
+  PINNED_DND_MIME,
+  reorderPinned,
+  usePinnedReorder,
+} from '../hooks/usePinnedReorder';
 import type { WidgetItem, WidgetType } from '../types';
 
 function computeIdxFromX(e: DragEvent, container: Element) {
@@ -10,21 +16,6 @@ function computeIdxFromX(e: DragEvent, container: Element) {
     if (e.clientX < r.left + r.width / 2) return i;
   }
   return items.length;
-}
-
-function DropIndicator() {
-  return (
-    <div
-      style={{
-        width: 4,
-        alignSelf: 'stretch',
-        background: 'var(--accent)',
-        borderRadius: 2,
-        flexShrink: 0,
-        boxShadow: '0 0 0 4px color-mix(in oklab, var(--accent) 18%, transparent)',
-      }}
-    />
-  );
 }
 
 interface PinnedStripProps {
@@ -48,8 +39,12 @@ export function PinnedStrip({
   onAcceptInline,
   onAdd,
 }: PinnedStripProps) {
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [dropIdx, setDropIdx] = useState<number | null>(null);
+  const reorder = usePinnedReorder({
+    items: widgets,
+    setItems: onReorder,
+    computeIdx: computeIdxFromX,
+  });
+  const { draggingId, setDraggingId, dropIdx, setDropIdx, dragHandleProps } = reorder;
   const [acceptingExternal, setAcceptingExternal] = useState<AcceptState>(false);
   const [collapsed, setCollapsed] = useState(false);
   const [isMobileStrip, setIsMobileStrip] = useState(
@@ -65,7 +60,7 @@ export function PinnedStrip({
   const containerOnDragOver = (e: DragEvent<HTMLDivElement>) => {
     const types = e.dataTransfer.types;
     const fromGrid = types.includes('application/x-widget-id');
-    const fromPin = types.includes('application/x-pinned-id');
+    const fromPin = types.includes(PINNED_DND_MIME);
     const fromInline = types.includes('application/x-inline-type');
     if (!fromGrid && !fromPin && !fromInline) return;
     let blocked = false;
@@ -91,7 +86,7 @@ export function PinnedStrip({
 
   const containerOnDrop = (e: DragEvent<HTMLDivElement>) => {
     const gridId = e.dataTransfer.getData('application/x-widget-id');
-    const pinId = e.dataTransfer.getData('application/x-pinned-id');
+    const pinId = e.dataTransfer.getData(PINNED_DND_MIME);
     const inlineType = e.dataTransfer.getData('application/x-inline-type') as WidgetType | '';
     if (gridId) {
       e.preventDefault();
@@ -105,15 +100,8 @@ export function PinnedStrip({
       onAcceptFromGrid(gridId, dropIdx == null ? widgets.length : dropIdx);
     } else if (pinId) {
       e.preventDefault();
-      const fromIdx = widgets.findIndex((w) => w.id === pinId);
-      let toIdx = dropIdx == null ? widgets.length : dropIdx;
-      if (fromIdx !== -1 && toIdx !== fromIdx && toIdx !== fromIdx + 1) {
-        const next = [...widgets];
-        const [moved] = next.splice(fromIdx, 1);
-        if (toIdx > fromIdx) toIdx -= 1;
-        next.splice(toIdx, 0, moved);
-        onReorder(next);
-      }
+      const next = reorderPinned(widgets, pinId, dropIdx);
+      if (next) onReorder(next);
     } else if (inlineType) {
       e.preventDefault();
       if (!pinnedTypes.includes(inlineType) && onAcceptInline) {
@@ -254,19 +242,7 @@ export function PinnedStrip({
                       onRemove={() => onRemove(w.id)}
                       onUnpin={() => onRemove(w.id)}
                       isPinned
-                      dragHandleProps={{
-                        draggable: true,
-                        onDragStart: (e) => {
-                          setDraggingId(w.id);
-                          e.dataTransfer.effectAllowed = 'move';
-                          e.dataTransfer.setData('application/x-pinned-id', w.id);
-                        },
-                        onDragEnd: () => {
-                          setDraggingId(null);
-                          setDropIdx(null);
-                          setAcceptingExternal(false);
-                        },
-                      }}
+                      dragHandleProps={dragHandleProps(w.id)}
                     />
                   </div>
                 </Fragment>

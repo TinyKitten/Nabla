@@ -43,7 +43,9 @@ export type IconName =
   | 'x'
   | 'pin'
   | 'folder'
-  | 'logo';
+  | 'logo'
+  | 'dashboard'
+  | 'chat-bubble';
 
 interface IconProps {
   name: IconName | string;
@@ -155,6 +157,10 @@ export function Icon({ name, size = 18, stroke = 1.6, style }: IconProps) {
           <path d="M4 20 L12 4 L20 20 Z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
         </svg>
       );
+    case 'dashboard':
+      return (<svg viewBox="0 0 24 24" style={s}><rect x="3" y="3" width="7" height="9" rx="1.6" /><rect x="14" y="3" width="7" height="5" rx="1.6" /><rect x="14" y="12" width="7" height="9" rx="1.6" /><rect x="3" y="16" width="7" height="5" rx="1.6" /></svg>);
+    case 'chat-bubble':
+      return (<svg viewBox="0 0 24 24" style={s}><path d="M21 12a8 8 0 0 1-11.6 7.2L4 21l1.8-5.4A8 8 0 1 1 21 12z" /></svg>);
     default:
       return null;
   }
