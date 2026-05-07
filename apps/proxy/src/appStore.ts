@@ -1,15 +1,12 @@
 import { readFileSync } from 'node:fs';
 import jwt from 'jsonwebtoken';
-import { APPLE_STOREFRONTS } from './storefronts.js';
 import type { ReviewSample } from './types.js';
 
 const TOKEN_TTL_SECONDS = 60 * 15;
 const PAGE_LIMIT = 200;
 const MAX_PAGES = 5;
-const LOOKUP_CONCURRENCY = 10;
 const ASC_FETCH_TIMEOUT_MS = 10_000;
 const LOOKUP_FETCH_TIMEOUT_MS = 5_000;
-const LOOKUP_BATCH_DELAY_MS = 3_500;
 
 interface CachedToken {
   token: string;
@@ -117,26 +114,12 @@ async function lookupOne(appId: string, country: string): Promise<LookupResult |
   }
 }
 
-async function fetchGlobalAggregate(appId: string): Promise<{ count: number; average: number }> {
-  let totalCount = 0;
-  let weightedStars = 0;
-  for (let i = 0; i < APPLE_STOREFRONTS.length; i += LOOKUP_CONCURRENCY) {
-    const batch = APPLE_STOREFRONTS.slice(i, i + LOOKUP_CONCURRENCY);
-    const results = await Promise.all(batch.map((c) => lookupOne(appId, c)));
-    for (const r of results) {
-      const c = r?.userRatingCount ?? 0;
-      const a = r?.averageUserRating ?? 0;
-      if (c > 0) {
-        totalCount += c;
-        weightedStars += a * c;
-      }
-    }
-    if (i + LOOKUP_CONCURRENCY < APPLE_STOREFRONTS.length) {
-      await new Promise((r) => setTimeout(r, LOOKUP_BATCH_DELAY_MS));
-    }
-  }
-  const average = totalCount > 0 ? weightedStars / totalCount : 0;
-  return { count: totalCount, average };
+async function fetchJpAggregate(appId: string): Promise<{ count: number; average: number }> {
+  const result = await lookupOne(appId, 'jp');
+  return {
+    count: result?.userRatingCount ?? 0,
+    average: result?.averageUserRating ?? 0,
+  };
 }
 
 export interface AppStoreSnapshot {
@@ -149,7 +132,7 @@ export async function fetchAppStore(): Promise<AppStoreSnapshot> {
   const appId = process.env.APP_STORE_CONNECT_APP_ID;
   if (!appId) throw new Error('APP_STORE_CONNECT_APP_ID not set');
   const [aggregate, textReviews] = await Promise.all([
-    fetchGlobalAggregate(appId),
+    fetchJpAggregate(appId),
     fetchTextReviews(appId),
   ]);
   return {
