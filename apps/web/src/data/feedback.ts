@@ -1,13 +1,8 @@
-import type { FeedbackData, FeedbackEntry } from '../types';
+import type { FeedbackData, StoreReviewsResponse } from '../types';
 import { setToolConnected } from '../state/toolConnections';
 
 const FETCH_TIMEOUT_MS = 30_000;
 const CACHE_TTL_MS = 10 * 60 * 1000;
-
-interface StoreReviewsResponse {
-  items: FeedbackEntry[];
-  sources: { appStore: boolean; googlePlay: boolean };
-}
 
 let cached: { data: FeedbackData; at: number } | null = null;
 let inFlight: Promise<FeedbackData> | null = null;

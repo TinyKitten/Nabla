@@ -47,6 +47,11 @@ export interface FeedbackData {
   unread: number;
 }
 
+export interface StoreReviewsResponse {
+  items: FeedbackEntry[];
+  sources: { appStore: boolean; googlePlay: boolean };
+}
+
 export interface PerformanceData {
   crashFree: number;
   delta: string;

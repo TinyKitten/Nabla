@@ -54,7 +54,7 @@ async function fetchGooglePlay(): Promise<GooglePlaySnapshot> {
     const url =
       `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${pkg}/reviews?` +
       params.toString();
-    const res = await client.request<PlayReviewPage>({ url });
+    const res = await client.request<PlayReviewPage>({ url, timeout: 15_000 });
     const json = res.data;
     for (const r of json.reviews ?? []) {
       const c = r.comments[0]?.userComment;

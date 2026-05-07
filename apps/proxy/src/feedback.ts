@@ -7,6 +7,13 @@ const MIN_MS = 60 * 1000;
 const HOUR_MS = 60 * MIN_MS;
 const DAY_MS = 24 * HOUR_MS;
 
+const ABSOLUTE_DATE_FMT = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Tokyo',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
 function relativeWhen(ts: number, now = Date.now()): string {
   const diff = Math.max(0, now - ts);
   if (diff < HOUR_MS) {
@@ -15,8 +22,7 @@ function relativeWhen(ts: number, now = Date.now()): string {
   }
   if (diff < DAY_MS) return `${Math.round(diff / HOUR_MS)}時間前`;
   if (diff < 7 * DAY_MS) return `${Math.round(diff / DAY_MS)}日前`;
-  const d = new Date(ts);
-  return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+  return ABSOLUTE_DATE_FMT.format(ts).replace(/-/g, '/');
 }
 
 function joinTitleBody(title?: string, body?: string): string {
