@@ -42,6 +42,7 @@ export interface FeedbackEntry {
 export interface FeedbackData {
   items: FeedbackEntry[];
   unread: number;
+  hasMore?: boolean;
 }
 
 export interface PerformanceData {

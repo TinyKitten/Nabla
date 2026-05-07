@@ -1,27 +1,56 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { fetchAppStore } from './appStore.js';
 import { aggregate } from './aggregate.js';
-import type { StoreRatingResponse } from './types.js';
+import { fetchGitHubFeedback } from './github.js';
+import type { FeedbackResponse, StoreRatingResponse } from './types.js';
 
 const PORT = Number(process.env.PROXY_PORT ?? 5174);
-const CACHE_TTL_MS = 30 * 60 * 1000;
+const STORE_RATING_TTL_MS = 30 * 60 * 1000;
+const FEEDBACK_TTL_MS = 5 * 60 * 1000;
 
-let cached: { data: StoreRatingResponse; at: number } | null = null;
-let inFlight: Promise<StoreRatingResponse> | null = null;
+let cachedStoreRating: { data: StoreRatingResponse; at: number } | null = null;
+let storeRatingInFlight: Promise<StoreRatingResponse> | null = null;
+
+let cachedFeedback: { data: FeedbackResponse; at: number } | null = null;
+let feedbackInFlight: Promise<FeedbackResponse> | null = null;
 
 async function loadStoreRating(): Promise<StoreRatingResponse> {
-  if (cached && Date.now() - cached.at < CACHE_TTL_MS) return cached.data;
-  if (inFlight) return inFlight;
-  inFlight = (async () => {
+  if (cachedStoreRating && Date.now() - cachedStoreRating.at < STORE_RATING_TTL_MS) {
+    return cachedStoreRating.data;
+  }
+  if (storeRatingInFlight) return storeRatingInFlight;
+  storeRatingInFlight = (async () => {
     const snap = await fetchAppStore();
     const data = aggregate(snap);
-    cached = { data, at: Date.now() };
+    cachedStoreRating = { data, at: Date.now() };
     return data;
   })();
   try {
-    return await inFlight;
+    return await storeRatingInFlight;
   } finally {
-    inFlight = null;
+    storeRatingInFlight = null;
+  }
+}
+
+async function loadFeedback(): Promise<FeedbackResponse> {
+  if (cachedFeedback && Date.now() - cachedFeedback.at < FEEDBACK_TTL_MS) {
+    return cachedFeedback.data;
+  }
+  if (feedbackInFlight) return feedbackInFlight;
+  feedbackInFlight = (async () => {
+    const snap = await fetchGitHubFeedback();
+    const data: FeedbackResponse = {
+      items: snap.items,
+      hasMore: snap.hasMore,
+      sources: { github: snap.connected },
+    };
+    cachedFeedback = { data, at: Date.now() };
+    return data;
+  })();
+  try {
+    return await feedbackInFlight;
+  } finally {
+    feedbackInFlight = null;
   }
 }
 
@@ -31,17 +60,29 @@ function send(res: ServerResponse, status: number, body: unknown) {
 }
 
 async function handle(req: IncomingMessage, res: ServerResponse) {
-  if (req.method !== 'GET' || req.url !== '/api/store-rating') {
+  if (req.method !== 'GET') {
     send(res, 404, { error: 'not found' });
     return;
   }
-  try {
-    const data = await loadStoreRating();
-    send(res, 200, data);
-  } catch (err) {
-    console.error('[store-rating]', err);
-    send(res, 503, { error: err instanceof Error ? err.message : 'unknown' });
+  if (req.url === '/api/store-rating') {
+    try {
+      send(res, 200, await loadStoreRating());
+    } catch (err) {
+      console.error('[store-rating]', err);
+      send(res, 503, { error: err instanceof Error ? err.message : 'unknown' });
+    }
+    return;
   }
+  if (req.url === '/api/feedback') {
+    try {
+      send(res, 200, await loadFeedback());
+    } catch (err) {
+      console.error('[feedback]', err);
+      send(res, 503, { error: err instanceof Error ? err.message : 'unknown' });
+    }
+    return;
+  }
+  send(res, 404, { error: 'not found' });
 }
 
 createServer((req, res) => {
