@@ -54,7 +54,7 @@ export default function App() {
             className="jp-text"
             style={{ fontSize: 12, color: 'var(--ink-3)', lineHeight: 1.6 }}
           >
-            チャットで「天気」「ストア評価」「フィードバック」「パフォーマンス」などと聞くと、
+            チャットで「天気」「ストア評価」「レビュー」「パフォーマンス」などと聞くと、
             ツール呼び出し → ストリーミング応答 → ウィジェット表示の流れを体験できます。
           </div>
         </TweakSection>

@@ -4,6 +4,7 @@ const REPO = 'TrainLCD/Issues';
 const FEEDBACK_LABEL = '🙏 Feedback';
 const PER_PAGE = 100;
 const FETCH_TIMEOUT_MS = 10_000;
+const SNAPSHOT_TTL_MS = 5 * 60 * 1000;
 
 interface GitHubIssue {
   number: number;
@@ -27,7 +28,7 @@ export interface GitHubFeedbackSnapshot {
   connected: boolean;
 }
 
-export async function fetchGitHubFeedback(): Promise<GitHubFeedbackSnapshot> {
+async function fetchGitHubFeedback(): Promise<GitHubFeedbackSnapshot> {
   const token = process.env.GITHUB_TOKEN;
   if (!token) {
     return { items: [], hasMore: false, connected: false };
@@ -63,8 +64,27 @@ export async function fetchGitHubFeedback(): Promise<GitHubFeedbackSnapshot> {
         author: '匿名',
         createdAt: Date.parse(i.created_at),
         stars: 0,
+        source: 'github',
       };
     });
 
   return { items, hasMore, connected: true };
+}
+
+let snapshotCache: { data: GitHubFeedbackSnapshot; at: number } | null = null;
+let snapshotInFlight: Promise<GitHubFeedbackSnapshot> | null = null;
+
+export async function getGitHubFeedbackSnapshot(): Promise<GitHubFeedbackSnapshot> {
+  if (snapshotCache && Date.now() - snapshotCache.at < SNAPSHOT_TTL_MS) return snapshotCache.data;
+  if (snapshotInFlight) return snapshotInFlight;
+  snapshotInFlight = (async () => {
+    try {
+      const snap = await fetchGitHubFeedback();
+      snapshotCache = { data: snap, at: Date.now() };
+      return snap;
+    } finally {
+      snapshotInFlight = null;
+    }
+  })();
+  return snapshotInFlight;
 }

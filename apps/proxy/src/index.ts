@@ -1,62 +1,49 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { fetchAppStore } from './appStore.js';
+import { getAppStoreSnapshot } from './appStore.js';
+import { getGooglePlaySnapshot } from './googlePlay.js';
+import { getGitHubFeedbackSnapshot } from './github.js';
 import { aggregate } from './aggregate.js';
-import { fetchGitHubFeedback } from './github.js';
+import { buildFeedback } from './feedback.js';
 import { fetchLinearTasks } from './linear.js';
 import type { FeedbackResponse, StoreRatingResponse, TasksResponse } from './types.js';
 
 const PORT = Number(process.env.PROXY_PORT ?? 5174);
-const STORE_RATING_TTL_MS = 30 * 60 * 1000;
-const FEEDBACK_TTL_MS = 5 * 60 * 1000;
 const TASKS_TTL_MS = 60 * 1000;
-
-let cachedStoreRating: { data: StoreRatingResponse; at: number } | null = null;
-let storeRatingInFlight: Promise<StoreRatingResponse> | null = null;
-
-let cachedFeedback: { data: FeedbackResponse; at: number } | null = null;
-let feedbackInFlight: Promise<FeedbackResponse> | null = null;
 
 let cachedTasks: { data: TasksResponse; at: number } | null = null;
 let tasksInFlight: Promise<TasksResponse> | null = null;
 
 async function loadStoreRating(): Promise<StoreRatingResponse> {
-  if (cachedStoreRating && Date.now() - cachedStoreRating.at < STORE_RATING_TTL_MS) {
-    return cachedStoreRating.data;
-  }
-  if (storeRatingInFlight) return storeRatingInFlight;
-  storeRatingInFlight = (async () => {
-    const snap = await fetchAppStore();
-    const data = aggregate(snap);
-    cachedStoreRating = { data, at: Date.now() };
-    return data;
-  })();
-  try {
-    return await storeRatingInFlight;
-  } finally {
-    storeRatingInFlight = null;
-  }
+  const snap = await getAppStoreSnapshot();
+  return aggregate(snap);
 }
 
 async function loadFeedback(): Promise<FeedbackResponse> {
-  if (cachedFeedback && Date.now() - cachedFeedback.at < FEEDBACK_TTL_MS) {
-    return cachedFeedback.data;
-  }
-  if (feedbackInFlight) return feedbackInFlight;
-  feedbackInFlight = (async () => {
-    const snap = await fetchGitHubFeedback();
-    const data: FeedbackResponse = {
-      items: snap.items,
-      hasMore: snap.hasMore,
-      sources: { github: snap.connected },
-    };
-    cachedFeedback = { data, at: Date.now() };
-    return data;
-  })();
-  try {
-    return await feedbackInFlight;
-  } finally {
-    feedbackInFlight = null;
-  }
+  const [github, appStore, googlePlay] = await Promise.all([
+    getGitHubFeedbackSnapshot().catch((err) => {
+      console.warn('[feedback] GitHub fetch failed:', err);
+      return null;
+    }),
+    getAppStoreSnapshot().catch((err) => {
+      console.warn('[feedback] App Store fetch failed:', err);
+      return null;
+    }),
+    getGooglePlaySnapshot().catch((err) => {
+      console.warn('[feedback] Google Play fetch failed:', err);
+      return null;
+    }),
+  ]);
+  const built = buildFeedback(github, appStore, googlePlay);
+  return {
+    items: built.items,
+    unread: built.unread,
+    hasMore: built.hasMore,
+    sources: {
+      github: github?.connected ?? false,
+      appStore: appStore !== null,
+      googlePlay: googlePlay !== null,
+    },
+  };
 }
 
 async function loadTasks(): Promise<TasksResponse> {
@@ -102,7 +89,9 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   }
   if (req.url === '/api/feedback') {
     try {
-      send(res, 200, await loadFeedback());
+      const data = await loadFeedback();
+      const anySource = data.sources.github || data.sources.appStore || data.sources.googlePlay;
+      send(res, anySource ? 200 : 503, data);
     } catch (err) {
       console.error('[feedback]', err);
       send(res, 503, { error: err instanceof Error ? err.message : 'unknown' });
