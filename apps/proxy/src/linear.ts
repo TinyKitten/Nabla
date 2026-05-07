@@ -13,41 +13,37 @@ export interface LinearTask {
   stateType: string;
 }
 
-interface LinearViewerIssuesResponse {
+interface LinearIssuesResponse {
   data?: {
-    viewer: {
-      assignedIssues: {
-        nodes: {
-          id: string;
-          identifier: string;
-          title: string;
-          url: string;
-          priority: number;
-          dueDate: string | null;
-          state: { name: string; type: string };
-        }[];
-      };
+    issues: {
+      nodes: {
+        id: string;
+        identifier: string;
+        title: string;
+        url: string;
+        priority: number;
+        dueDate: string | null;
+        state: { name: string; type: string };
+      }[];
     };
   };
   errors?: { message: string }[];
 }
 
-const QUERY = `query NablaAssignedIssues($first: Int!) {
-  viewer {
-    assignedIssues(
-      first: $first,
-      filter: { state: { type: { in: ["unstarted", "started"] } } },
-      orderBy: updatedAt
-    ) {
-      nodes {
-        id
-        identifier
-        title
-        url
-        priority
-        dueDate
-        state { name type }
-      }
+const QUERY = `query NablaOpenIssues($first: Int!) {
+  issues(
+    first: $first,
+    filter: { state: { type: { in: ["unstarted", "started"] } } },
+    orderBy: updatedAt
+  ) {
+    nodes {
+      id
+      identifier
+      title
+      url
+      priority
+      dueDate
+      state { name type }
     }
   }
 }`;
@@ -67,11 +63,11 @@ export async function fetchLinearTasks(): Promise<LinearTask[]> {
   if (!res.ok) {
     throw new Error(`Linear ${res.status}: ${await res.text()}`);
   }
-  const json = (await res.json()) as LinearViewerIssuesResponse;
+  const json = (await res.json()) as LinearIssuesResponse;
   if (json.errors?.length) {
     throw new Error(`Linear errors: ${json.errors.map((e) => e.message).join('; ')}`);
   }
-  const nodes = json.data?.viewer.assignedIssues.nodes ?? [];
+  const nodes = json.data?.issues.nodes ?? [];
   return nodes
     .map((n) => ({
       id: n.id,

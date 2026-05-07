@@ -68,7 +68,7 @@ Most `WIDGET_DEFS[type].fetch()` are stubbed and return mock data with light ran
   - **App Store Connect Customer Reviews** (text + title + reviewer + territory).
   - **Google Play `androidpublisher` Reviews** (text + author). Google Play *is* used here because the per-review API returns text, unlike the missing aggregate ratings endpoint.
   - The `unread` count is the number of GitHub items only — store reviews have no unread concept (parent issue #3 plans localStorage-based last-seen for the GitHub side).
-- **tasks** → `/api/tasks` → `apps/proxy` → Linear GraphQL for assigned open issues, merged with localStorage local tasks + done overrides.
+- **tasks** → `/api/tasks` → `apps/proxy` → Linear GraphQL for all open (`unstarted` / `started`) issues in the workspace, merged with localStorage local tasks + done overrides. The query is workspace-wide (not scoped to `viewer.assignedIssues`) because Nabla is a single-user tool — restricting to assignees would hide unassigned issues that the user is still tracking.
 
 `performance` is still mocked (Issue #4).
 
