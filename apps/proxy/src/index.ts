@@ -113,7 +113,10 @@ function parseCoord(value: string | null, min: number, max: number): number | nu
 async function loadWeather(lat: number, lon: number): Promise<WeatherResponse> {
   const key = `${lat.toFixed(3)},${lon.toFixed(3)}`;
   const cached = weatherCache.get(key);
-  if (cached && Date.now() - cached.at < WEATHER_TTL_MS) return cached.data;
+  if (cached) {
+    if (Date.now() - cached.at < WEATHER_TTL_MS) return cached.data;
+    weatherCache.delete(key);
+  }
   const existing = weatherInFlight.get(key);
   if (existing) return existing;
   const promise = (async () => {
