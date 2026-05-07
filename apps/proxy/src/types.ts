@@ -21,6 +21,7 @@ export interface TasksResponse {
     id: string;
     identifier: string;
     text: string;
+    description: string;
     url: string;
     priority: number;
     dueDate: string | null;

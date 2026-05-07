@@ -1184,17 +1184,35 @@ function TasksWidget({ size, data }: { size: WidgetSize; data: TasksData | null 
               </svg>
             )}
           </span>
-          <span
-            className="jp-text"
-            style={{
-              fontSize: 12.5,
-              color: t.done ? 'var(--ink-4)' : 'var(--ink)',
-              textDecoration: t.done ? 'line-through' : 'none',
-              lineHeight: 1.4,
-            }}
-          >
-            {t.text}
-          </span>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div
+              className="jp-text"
+              style={{
+                fontSize: 12.5,
+                color: t.done ? 'var(--ink-4)' : 'var(--ink)',
+                textDecoration: t.done ? 'line-through' : 'none',
+                lineHeight: 1.4,
+              }}
+            >
+              {t.text}
+            </div>
+            {t.description && (
+              <div
+                className="jp-text"
+                style={{
+                  fontSize: 11,
+                  color: 'var(--ink-4)',
+                  lineHeight: 1.4,
+                  marginTop: 2,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {t.description}
+              </div>
+            )}
+          </div>
         </div>
       ))}
     </div>
