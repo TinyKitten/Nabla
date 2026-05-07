@@ -131,9 +131,9 @@ async function fetchSentryPerformance(): Promise<SentryPerformanceSnapshot> {
   const projectId = await resolveProjectId(org, projectSlug, token);
   const [sessions, abnormal, total24h, coldStart] = await Promise.all([
     fetchSessions(org, projectId, token),
-    fetchAbnormalSessions(org, projectId, token).catch(() => null),
-    fetchTotalSessions24h(org, projectId, token).catch(() => null),
-    fetchColdStart(org, projectId, token).catch(() => null),
+    fetchAbnormalSessions(org, projectId, token),
+    fetchTotalSessions24h(org, projectId, token),
+    fetchColdStart(org, projectId, token),
   ]);
 
   const group = sessions.groups[0];
@@ -148,21 +148,16 @@ async function fetchSentryPerformance(): Promise<SentryPerformanceSnapshot> {
   const sessionsLatest = sessionSeries.length > 0 ? sessionSeries[sessionSeries.length - 1] : 0;
 
   let anrPercent = 0;
-  if (abnormal && total24h) {
-    const abnormalGroup = abnormal.groups[0];
-    const abnormalCount = abnormalGroup?.totals['sum(session)'] ?? 0;
-    const totalCount = total24h.groups[0]?.totals['sum(session)'] ?? 0;
-    if (totalCount > 0) {
-      anrPercent = (abnormalCount / totalCount) * 100;
-    }
+  const abnormalCount = abnormal.groups[0]?.totals['sum(session)'] ?? 0;
+  const totalCount = total24h.groups[0]?.totals['sum(session)'] ?? 0;
+  if (totalCount > 0) {
+    anrPercent = (abnormalCount / totalCount) * 100;
   }
 
   let coldStartSec = 0;
-  if (coldStart) {
-    const ms = coldStart.data[0]?.['avg(measurements.app_start_cold)'];
-    if (typeof ms === 'number' && Number.isFinite(ms)) {
-      coldStartSec = ms / 1000;
-    }
+  const ms = coldStart.data[0]?.['avg(measurements.app_start_cold)'];
+  if (typeof ms === 'number' && Number.isFinite(ms)) {
+    coldStartSec = ms / 1000;
   }
 
   return {
