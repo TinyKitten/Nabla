@@ -37,13 +37,21 @@ const SHORTCUTS: Shortcut[] = [
   { label: 'パフォーマンス', q: 'パフォーマンス推移は？', icon: 'activity' },
 ];
 
+function greetingForHour(hour: number): string {
+  if (hour < 5 || hour >= 18) return 'こんばんは';
+  if (hour < 11) return 'おはようございます';
+  return 'こんにちは';
+}
+
 export function ChatLayout() {
+  const now = new Date();
+  const greeting = greetingForHour(now.getHours());
   const initial: Message[] = [
     {
       id: 'hinit',
       role: 'ai',
-      text: 'おはようございます、きったんさん。上のピン留めはいつでも見えるウィジェット、右パネルは追加のウィジェット一覧です。気になることがあれば声をかけてください。',
-      time: '09:02',
+      text: `${greeting}、きったんさん。上のピン留めはいつでも見えるウィジェット、右パネルは追加のウィジェット一覧です。気になることがあれば声をかけてください。`,
+      time: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
     },
   ];
   const { messages, input, setInput, send, stop, streaming } = useChat(initial);
