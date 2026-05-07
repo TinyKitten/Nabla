@@ -72,6 +72,7 @@ export interface TaskEntry {
   source: 'linear' | 'local';
   identifier?: string;
   url?: string;
+  description?: string;
 }
 
 export interface TasksData {

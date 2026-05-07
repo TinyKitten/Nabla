@@ -9,6 +9,7 @@ interface LinearTaskItem {
   id: string;
   identifier: string;
   text: string;
+  description: string;
   url: string;
   priority: number;
   dueDate: string | null;
@@ -68,11 +69,12 @@ let inFlight: Promise<TasksData> | null = null;
 function buildSnapshot(linear: LinearTaskItem[], state: PersistedState): TasksData {
   const fromLinear: TaskEntry[] = linear.map((it) => ({
     id: 'linear:' + it.id,
-    text: it.identifier ? `${it.identifier} ${it.text}` : it.text,
+    text: it.text,
     done: state.linearOverrides[it.id] ?? false,
     source: 'linear',
     identifier: it.identifier,
     url: it.url,
+    description: it.description,
   }));
   const fromLocal: TaskEntry[] = state.localTasks
     .slice()

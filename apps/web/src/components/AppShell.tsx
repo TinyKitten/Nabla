@@ -1,15 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useChat } from '../hooks/useChat';
 import { Icon } from './Icon';
 import { ToolsBadge } from './ToolsBadge';
-import { PinnedStrip } from './PinnedStrip';
-import { MessageRow } from './MessageRow';
-import { ChatComposer } from './ChatComposer';
 import { WidgetGrid } from './WidgetGrid';
 import { WIDGET_DEFS } from './Widgets';
-import type { FeedbackEntry, Message, WidgetItem, WidgetType } from '../types';
-import { FEEDBACK_DETAIL_EVENT } from './Widgets';
-import type { IconName } from './Icon';
+import type { Message, WidgetItem, WidgetType } from '../types';
 
 const PINNED_INITIAL: WidgetItem[] = [
   { id: 'h2', type: 'storeRating', size: 'sm', refreshInterval: 1800 },
@@ -25,37 +22,48 @@ const WIDGETS_INITIAL: WidgetItem[] = [
   { id: 'd4', type: 'tasks', size: 'md', refreshInterval: 0 },
 ];
 
-interface Shortcut {
-  label: string;
-  q: string;
-  icon: IconName;
-}
-
-const SHORTCUTS: Shortcut[] = [
-  { label: '今日の天気', q: '今日の天気は？', icon: 'cloud-sun' },
-  { label: 'ストア評価', q: 'TrainLCDの評価', icon: 'star' },
-  { label: '新着レビュー', q: '新しいレビューある？', icon: 'message-dots' },
-  { label: 'パフォーマンス', q: 'パフォーマンス推移は？', icon: 'activity' },
+const INITIAL_MESSAGES: Message[] = [
+  {
+    id: 'hinit',
+    role: 'ai',
+    text: 'おはようございます、きったんさん。上のピン留めはいつでも見えるウィジェット、右パネルは追加のウィジェット一覧です。気になることがあれば声をかけてください。',
+    time: '09:02',
+  },
 ];
 
-function greetingForHour(hour: number): string {
-  if (hour < 5 || hour >= 18) return 'こんばんは';
-  if (hour < 11) return 'おはようございます';
-  return 'こんにちは';
+export interface ShellContext {
+  pinned: WidgetItem[];
+  widgets: WidgetItem[];
+  setPinned: Dispatch<SetStateAction<WidgetItem[]>>;
+  setWidgets: Dispatch<SetStateAction<WidgetItem[]>>;
+  pinWidget: (id: string, beforeIdx?: number) => void;
+  unpinWidget: (id: string) => void;
+  acceptInlineToPin: (type: WidgetType, beforeIdx?: number) => void;
+  isMobile: boolean;
+  panelOpen: boolean;
+  setPanelOpen: Dispatch<SetStateAction<boolean>>;
+  chat: ReturnType<typeof useChat>;
+  goChatAndSend: (text: string) => void;
 }
 
-export function ChatLayout() {
-  const now = new Date();
-  const greeting = greetingForHour(now.getHours());
-  const initial: Message[] = [
-    {
-      id: 'hinit',
-      role: 'ai',
-      text: `${greeting}、きったんさん。上のピン留めはいつでも見えるウィジェット、右パネルは追加のウィジェット一覧です。気になることがあれば声をかけてください。`,
-      time: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
-    },
-  ];
-  const { messages, input, setInput, send, stop, streaming, sendFeedbackDetail } = useChat(initial);
+const tabBtnStyle = (active: boolean) => ({
+  width: 36,
+  height: 36,
+  borderRadius: 9,
+  background: active ? 'var(--accent-soft)' : 'transparent',
+  color: active ? 'var(--accent)' : 'var(--ink-3)',
+  border: 'none',
+  cursor: 'pointer',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  transition: 'background 0.15s, color 0.15s',
+  textDecoration: 'none',
+});
+
+export function AppShell() {
+  const chat = useChat(INITIAL_MESSAGES);
+  const navigate = useNavigate();
   const [pinned, setPinned] = useState<WidgetItem[]>(PINNED_INITIAL);
   const [widgets, setWidgets] = useState<WidgetItem[]>(WIDGETS_INITIAL);
   const [isMobile, setIsMobile] = useState(
@@ -69,25 +77,6 @@ export function ChatLayout() {
   const [panelOpen, setPanelOpen] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth >= 720 : true,
   );
-  const scrollRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [messages]);
-
-  useEffect(() => {
-    const onDetail = (e: Event) => {
-      const ce = e as CustomEvent<FeedbackEntry>;
-      if (ce.detail) sendFeedbackDetail(ce.detail);
-    };
-    window.addEventListener(FEEDBACK_DETAIL_EVENT, onDetail);
-    return () => window.removeEventListener(FEEDBACK_DETAIL_EVENT, onDetail);
-  }, [sendFeedbackDetail]);
-
-  const openWidgetDetail = (w: WidgetItem) => {
-    const def = WIDGET_DEFS[w.type];
-    send(`${def.title}の詳しい状況を教えて`);
-  };
 
   const unpinWidget = (id: string) => {
     const w = pinned.find((x) => x.id === id);
@@ -96,6 +85,7 @@ export function ChatLayout() {
     if (widgets.some((d) => d.type === w.type)) return;
     setWidgets((d) => [...d, { ...w, size: 'md' }]);
   };
+
   const pinWidget = (id: string, beforeIdx?: number) => {
     const w = widgets.find((x) => x.id === id);
     if (!w) return;
@@ -130,6 +120,26 @@ export function ChatLayout() {
     });
   };
 
+  const goChatAndSend = (text: string) => {
+    navigate('/chat');
+    chat.send(text);
+  };
+
+  const context: ShellContext = {
+    pinned,
+    widgets,
+    setPinned,
+    setWidgets,
+    pinWidget,
+    unpinWidget,
+    acceptInlineToPin,
+    isMobile,
+    panelOpen,
+    setPanelOpen,
+    chat,
+    goChatAndSend,
+  };
+
   return (
     <div className="chat-root" style={{ display: 'flex', height: '100%', background: 'var(--bg)' }}>
       <aside
@@ -160,13 +170,21 @@ export function ChatLayout() {
         >
           <Icon name="logo" size={17} />
         </div>
-        <button
-          className="btn-icon"
-          style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
-          title="新しいチャット"
+        <NavLink
+          to="/"
+          end
+          title="ダッシュボード"
+          style={({ isActive }) => tabBtnStyle(isActive)}
         >
-          <Icon name="edit" size={16} />
-        </button>
+          <Icon name="dashboard" size={16} />
+        </NavLink>
+        <NavLink
+          to="/chat"
+          title="チャット"
+          style={({ isActive }) => tabBtnStyle(isActive)}
+        >
+          <Icon name="chat-bubble" size={16} />
+        </NavLink>
         <div style={{ flex: 1 }} />
         <button className="btn-icon" title="設定">
           <Icon name="settings" size={16} />
@@ -215,79 +233,7 @@ export function ChatLayout() {
           </button>
         </header>
 
-        <PinnedStrip
-          widgets={pinned}
-          onReorder={setPinned}
-          onOpen={openWidgetDetail}
-          onRemove={(id) => setPinned((p) => p.filter((w) => w.id !== id))}
-          onAcceptFromGrid={pinWidget}
-          onAcceptInline={acceptInlineToPin}
-          onAdd={() => send('新しいウィジェットを追加')}
-        />
-
-        <div
-          ref={scrollRef}
-          className="scroll-area"
-          style={{ flex: 1, padding: isMobile ? '16px 14px 8px' : '24px 28px 8px' }}
-        >
-          <div style={{ maxWidth: 660, margin: '0 auto' }}>
-            {messages.map((m) => (
-              <MessageRow
-                key={m.id}
-                m={m}
-                pinnedTypes={pinned.map((w) => w.type)}
-                onPinInline={(type) => acceptInlineToPin(type)}
-              />
-            ))}
-          </div>
-        </div>
-
-        <div style={{ padding: isMobile ? '8px 14px 0' : '8px 28px 0' }}>
-          <div
-            style={{
-              maxWidth: 660,
-              margin: '0 auto',
-              display: 'flex',
-              gap: 6,
-              flexWrap: 'wrap',
-            }}
-          >
-            {SHORTCUTS.map((s) => (
-              <button
-                key={s.label}
-                className="chip jp-text"
-                onClick={() => send(s.q)}
-                style={{
-                  fontSize: 12,
-                  padding: '5px 12px 5px 10px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
-                <Icon
-                  name={s.icon}
-                  size={12}
-                  stroke={1.7}
-                  style={{ color: 'var(--ink-3)', flexShrink: 0 }}
-                />
-                {s.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div style={{ padding: isMobile ? '10px 14px 16px' : '12px 28px 22px' }}>
-          <div style={{ maxWidth: 660, margin: '0 auto' }}>
-            <ChatComposer
-              value={input}
-              onChange={setInput}
-              onSend={() => send()}
-              onStop={stop}
-              streaming={streaming}
-            />
-          </div>
-        </div>
+        <Outlet context={context} />
       </main>
 
       {isMobile && panelOpen && (
@@ -358,7 +304,7 @@ export function ChatLayout() {
             <button
               className="btn-icon"
               title="ウィジェット追加"
-              onClick={() => send('新しいウィジェットを追加')}
+              onClick={() => goChatAndSend('新しいウィジェットを追加')}
             >
               <Icon name="plus" size={15} />
             </button>
@@ -389,7 +335,7 @@ export function ChatLayout() {
             <WidgetGrid
               widgets={widgets}
               onReorder={setWidgets}
-              onOpen={openWidgetDetail}
+              onOpen={(w) => goChatAndSend(`${WIDGET_DEFS[w.type].title}の詳しい状況を教えて`)}
               onRemove={(id) => setWidgets((d) => d.filter((w) => w.id !== id))}
               onPin={(id) => pinWidget(id, pinned.length)}
               onUnpin={(type) => setPinned((p) => p.filter((x) => x.type !== type))}
