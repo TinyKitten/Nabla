@@ -56,3 +56,19 @@ export interface FeedbackResponse {
   hasMore: boolean;
   sources: { github: boolean; appStore: boolean; googlePlay: boolean };
 }
+
+export interface WeatherHourly {
+  temp: number;
+  at: number;
+}
+
+export interface WeatherResponse {
+  location: string;
+  temp: number;
+  feels: number;
+  humidity: number;
+  cond: string;
+  hourly: WeatherHourly[];
+  precip: number;
+  sources: { openWeather: boolean };
+}

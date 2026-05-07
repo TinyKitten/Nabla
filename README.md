@@ -65,13 +65,11 @@ The repo is a small `npm` workspaces monorepo:
   browser must not see. Vite forwards `/api/*` to it.
 
 All secrets live in **one** root `.env.local` (Vite reads it via
-`envDir: '../../'`, the proxy via `node --env-file`):
+`envDir: '../../'`, the proxy via `node --env-file`). Every key is proxy-only —
+nothing ships to the browser:
 
 ```env
-# browser-direct (Vite exposes anything VITE_*-prefixed)
-VITE_OPENWEATHER_API_KEY=...
-
-# proxy-only — never bundled into the client
+OPENWEATHER_API_KEY=...
 APP_STORE_CONNECT_KEY_ID=...
 APP_STORE_CONNECT_ISSUER_ID=...
 APP_STORE_CONNECT_PRIVATE_KEY_PATH=./keys/AuthKey_XXXXXX.p8
