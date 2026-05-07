@@ -5,13 +5,23 @@ import { getGitHubFeedbackSnapshot } from './github.js';
 import { aggregate } from './aggregate.js';
 import { buildFeedback } from './feedback.js';
 import { fetchLinearTasks } from './linear.js';
-import type { FeedbackResponse, StoreRatingResponse, TasksResponse } from './types.js';
+import { fetchWeatherSnapshot, isOpenWeatherConfigured } from './weather.js';
+import type {
+  FeedbackResponse,
+  StoreRatingResponse,
+  TasksResponse,
+  WeatherResponse,
+} from './types.js';
 
 const PORT = Number(process.env.PROXY_PORT ?? 5174);
 const TASKS_TTL_MS = 60 * 1000;
+const WEATHER_TTL_MS = 5 * 60 * 1000;
 
 let cachedTasks: { data: TasksResponse; at: number } | null = null;
 let tasksInFlight: Promise<TasksResponse> | null = null;
+
+const weatherCache = new Map<string, { data: WeatherResponse; at: number }>();
+const weatherInFlight = new Map<string, Promise<WeatherResponse>>();
 
 async function loadStoreRating(): Promise<StoreRatingResponse> {
   const snap = await getAppStoreSnapshot();
@@ -68,6 +78,31 @@ async function loadTasks(): Promise<TasksResponse> {
   }
 }
 
+function parseCoord(value: string | null): number | null {
+  if (value == null || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+async function loadWeather(lat: number, lon: number): Promise<WeatherResponse> {
+  const key = `${lat.toFixed(3)},${lon.toFixed(3)}`;
+  const cached = weatherCache.get(key);
+  if (cached && Date.now() - cached.at < WEATHER_TTL_MS) return cached.data;
+  const existing = weatherInFlight.get(key);
+  if (existing) return existing;
+  const promise = (async () => {
+    try {
+      const data = await fetchWeatherSnapshot(lat, lon);
+      weatherCache.set(key, { data, at: Date.now() });
+      return data;
+    } finally {
+      weatherInFlight.delete(key);
+    }
+  })();
+  weatherInFlight.set(key, promise);
+  return promise;
+}
+
 function send(res: ServerResponse, status: number, body: unknown) {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' });
   res.end(JSON.stringify(body));
@@ -100,6 +135,32 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   }
   if (req.url === '/api/tasks') {
     send(res, 200, await loadTasks());
+    return;
+  }
+  if (req.url && req.url.startsWith('/api/weather')) {
+    if (!isOpenWeatherConfigured()) {
+      send(res, 503, {
+        error: 'OPENWEATHER_API_KEY not configured',
+        sources: { openWeather: false },
+      });
+      return;
+    }
+    const url = new URL(req.url, 'http://localhost');
+    const lat = parseCoord(url.searchParams.get('lat'));
+    const lon = parseCoord(url.searchParams.get('lon'));
+    if (lat == null || lon == null) {
+      send(res, 400, { error: 'lat / lon query params are required' });
+      return;
+    }
+    try {
+      send(res, 200, await loadWeather(lat, lon));
+    } catch (err) {
+      console.error('[weather]', err);
+      send(res, 503, {
+        error: err instanceof Error ? err.message : 'unknown',
+        sources: { openWeather: false },
+      });
+    }
     return;
   }
   send(res, 404, { error: 'not found' });

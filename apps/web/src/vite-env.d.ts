@@ -1,7 +1,8 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  readonly VITE_OPENWEATHER_API_KEY?: string;
+  // No client-side env vars at the moment. All secrets live in the proxy.
+  readonly _placeholder?: never;
 }
 
 interface ImportMeta {
