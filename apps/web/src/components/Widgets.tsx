@@ -941,7 +941,7 @@ function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData |
             {data.hasMore ? `${data.unread}+` : data.unread}
           </span>
           <span className="jp-text" style={{ fontSize: 10, color: 'var(--ink-3)' }}>
-            未読レビュー
+            未読フィードバック
           </span>
         </div>
       </>
@@ -960,7 +960,7 @@ function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData |
           color: 'var(--ink-4)',
         }}
       >
-        フィードバックはまだありません
+        レビューもしくはフィードバックはまだありません
       </div>
     );
   }
@@ -979,7 +979,7 @@ function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData |
             color: 'var(--ink-4)',
           }}
         >
-          新着レビューはありません
+          新着のレビューもしくはフィードバックはありません
         </div>
       );
     }
