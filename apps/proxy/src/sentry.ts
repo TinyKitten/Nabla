@@ -86,6 +86,20 @@ function fetchAbnormalSessions(org: string, projectId: string, token: string) {
   );
 }
 
+function fetchTotalSessions24h(org: string, projectId: string, token: string) {
+  const params = new URLSearchParams({
+    project: projectId,
+    statsPeriod: '24h',
+    interval: '1h',
+  });
+  params.append('field', 'sum(session)');
+  return callSentry<SentrySessionsResponse>(
+    `/organizations/${org}/sessions/`,
+    params,
+    token,
+  );
+}
+
 function fetchColdStart(org: string, projectId: string, token: string) {
   const params = new URLSearchParams({
     project: projectId,
@@ -115,9 +129,10 @@ async function fetchSentryPerformance(): Promise<SentryPerformanceSnapshot> {
     throw new Error('SENTRY_ORG_SLUG / SENTRY_PROJECT_SLUG / SENTRY_AUTH_TOKEN not set');
   }
   const projectId = await resolveProjectId(org, projectSlug, token);
-  const [sessions, abnormal, coldStart] = await Promise.all([
+  const [sessions, abnormal, total24h, coldStart] = await Promise.all([
     fetchSessions(org, projectId, token),
     fetchAbnormalSessions(org, projectId, token).catch(() => null),
+    fetchTotalSessions24h(org, projectId, token).catch(() => null),
     fetchColdStart(org, projectId, token).catch(() => null),
   ]);
 
@@ -133,11 +148,12 @@ async function fetchSentryPerformance(): Promise<SentryPerformanceSnapshot> {
   const sessionsLatest = sessionSeries.length > 0 ? sessionSeries[sessionSeries.length - 1] : 0;
 
   let anrPercent = 0;
-  if (abnormal) {
+  if (abnormal && total24h) {
     const abnormalGroup = abnormal.groups[0];
     const abnormalCount = abnormalGroup?.totals['sum(session)'] ?? 0;
-    if (sessionsLatest > 0) {
-      anrPercent = (abnormalCount / sessionsLatest) * 100;
+    const totalCount = total24h.groups[0]?.totals['sum(session)'] ?? 0;
+    if (totalCount > 0) {
+      anrPercent = (abnormalCount / totalCount) * 100;
     }
   }
 
