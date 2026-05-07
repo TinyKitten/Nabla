@@ -181,16 +181,17 @@ let snapshotInFlight: Promise<SentryPerformanceSnapshot> | null = null;
 
 export async function getSentryPerformanceSnapshot(): Promise<SentryPerformanceSnapshot | null> {
   if (snapshotCache && Date.now() - snapshotCache.at < SNAPSHOT_TTL_MS) return snapshotCache.data;
-  if (snapshotInFlight) return snapshotInFlight;
-  snapshotInFlight = (async () => {
-    try {
-      const snap = await fetchSentryPerformance();
-      snapshotCache = { data: snap, at: Date.now() };
-      return snap;
-    } finally {
-      snapshotInFlight = null;
-    }
-  })();
+  if (!snapshotInFlight) {
+    snapshotInFlight = (async () => {
+      try {
+        const snap = await fetchSentryPerformance();
+        snapshotCache = { data: snap, at: Date.now() };
+        return snap;
+      } finally {
+        snapshotInFlight = null;
+      }
+    })();
+  }
   try {
     return await snapshotInFlight;
   } catch (err) {
