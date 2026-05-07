@@ -173,19 +173,19 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     send(res, 200, await loadTasks());
     return;
   }
-  if (req.url && req.url.startsWith('/api/weather')) {
+  const url = req.url ? new URL(req.url, 'http://localhost') : null;
+  if (url?.pathname === '/api/weather') {
+    const lat = parseCoord(url.searchParams.get('lat'), -90, 90);
+    const lon = parseCoord(url.searchParams.get('lon'), -180, 180);
+    if (lat == null || lon == null) {
+      send(res, 400, { error: 'lat / lon query params are required' });
+      return;
+    }
     if (!isOpenWeatherConfigured()) {
       send(res, 503, {
         error: 'OPENWEATHER_API_KEY not configured',
         sources: { openWeather: false },
       });
-      return;
-    }
-    const url = new URL(req.url, 'http://localhost');
-    const lat = parseCoord(url.searchParams.get('lat'), -90, 90);
-    const lon = parseCoord(url.searchParams.get('lon'), -180, 180);
-    if (lat == null || lon == null) {
-      send(res, 400, { error: 'lat / lon query params are required' });
       return;
     }
     try {
