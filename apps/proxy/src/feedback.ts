@@ -31,7 +31,7 @@ export function buildFeedback(
   github: GitHubFeedbackSnapshot | null,
   appStore: AppStoreSnapshot | null,
   googlePlay: GooglePlaySnapshot | null,
-): { items: FeedbackEntrySnapshot[]; hasMore: boolean } {
+): { items: FeedbackEntrySnapshot[]; unread: number; hasMore: boolean } {
   const items: FeedbackEntrySnapshot[] = [];
   if (github) items.push(...github.items);
   if (appStore) {
@@ -47,7 +47,9 @@ export function buildFeedback(
     }
   }
   items.sort((a, b) => b.createdAt - a.createdAt);
-  const truncated = items.length > MAX_ITEMS;
-  const hasMore = truncated || (github?.hasMore ?? false);
-  return { items: items.slice(0, MAX_ITEMS), hasMore };
+  return {
+    items: items.slice(0, MAX_ITEMS),
+    unread: github?.items.length ?? 0,
+    hasMore: github?.hasMore ?? false,
+  };
 }

@@ -28,6 +28,7 @@ export interface FeedbackEntrySnapshot {
 
 export interface FeedbackResponse {
   items: FeedbackEntrySnapshot[];
+  unread: number;
   hasMore: boolean;
   sources: { github: boolean; appStore: boolean; googlePlay: boolean };
 }

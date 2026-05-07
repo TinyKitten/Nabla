@@ -14,6 +14,7 @@ interface FeedbackEntrySnapshot {
 
 interface FeedbackResponse {
   items: FeedbackEntrySnapshot[];
+  unread: number;
   hasMore: boolean;
   sources: { github: boolean; appStore: boolean; googlePlay: boolean };
 }
@@ -77,8 +78,7 @@ export async function fetchFeedback(): Promise<FeedbackData> {
       setToolConnected('appStoreConnect', json.sources.appStore);
       setToolConnected('googlePlayConsole', json.sources.googlePlay);
       const items = json.items.map(toEntry);
-      const unread = items.filter((i) => i.source === 'github').length;
-      const data: FeedbackData = { items, unread, hasMore: json.hasMore };
+      const data: FeedbackData = { items, unread: json.unread, hasMore: json.hasMore };
       cached = { data, at: Date.now() };
       return data;
     } catch (err) {

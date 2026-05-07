@@ -31,6 +31,7 @@ async function loadFeedback(): Promise<FeedbackResponse> {
   const built = buildFeedback(github, appStore, googlePlay);
   return {
     items: built.items,
+    unread: built.unread,
     hasMore: built.hasMore,
     sources: {
       github: github?.connected ?? false,
