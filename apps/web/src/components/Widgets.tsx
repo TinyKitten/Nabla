@@ -905,6 +905,7 @@ function starsText(n: number) {
 }
 
 function SourceTag({ source }: { source: FeedbackSource }) {
+  if (source === 'github') return null;
   const label = source === 'appStore' ? 'iOS' : 'Android';
   return (
     <span
@@ -936,12 +937,31 @@ function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData |
             justifyContent: 'center',
           }}
         >
-          <span style={{ fontSize: 32, fontWeight: 500 }}>{data.unread}</span>
+          <span style={{ fontSize: 32, fontWeight: 500 }}>
+            {data.hasMore ? `${data.unread}+` : data.unread}
+          </span>
           <span className="jp-text" style={{ fontSize: 10, color: 'var(--ink-3)' }}>
             未読レビュー
           </span>
         </div>
       </>
+    );
+  }
+  if (data.items.length === 0) {
+    return (
+      <div
+        className="jp-text"
+        style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 12,
+          color: 'var(--ink-4)',
+        }}
+      >
+        フィードバックはまだありません
+      </div>
     );
   }
   if (size === 'md') {
@@ -966,9 +986,11 @@ function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData |
     return (
       <>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-          <span style={{ color: 'var(--accent)', fontSize: 11, letterSpacing: '0.04em' }}>
-            {starsText(top.stars)}
-          </span>
+          {top.stars > 0 && (
+            <span style={{ color: 'var(--accent)', fontSize: 11, letterSpacing: '0.04em' }}>
+              {starsText(top.stars)}
+            </span>
+          )}
           <SourceTag source={top.source} />
           <span style={{ fontSize: 10, color: 'var(--ink-4)' }}>{top.when}</span>
         </div>
@@ -989,36 +1011,35 @@ function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData |
         <div style={{ flex: 1 }} />
         <div className="jp-text" style={{ fontSize: 10, color: 'var(--ink-4)' }}>
           — {top.author}
-          {data.items.length > 1 ? ` · 他 ${data.items.length - 1} 件` : ''}
+          {data.items.length > 1
+            ? ` · 他 ${data.items.length - 1}${data.hasMore ? '+' : ''} 件`
+            : ''}
         </div>
       </>
     );
   }
-  const lgItems = data.items.slice(0, 5);
+  const visibleItems = data.items.slice(0, 5);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, overflow: 'hidden' }}>
-      {lgItems.length === 0 && (
-        <div
-          className="jp-text"
-          style={{ fontSize: 12, color: 'var(--ink-4)', padding: '8px 0' }}
-        >
-          新着レビューはありません
-        </div>
-      )}
-      {lgItems.map((it, i) => (
+      {visibleItems.map((it, i) => (
         <div
           key={i}
           style={{
-            paddingBottom: i < lgItems.length - 1 ? 8 : 0,
-            borderBottom: i < lgItems.length - 1 ? '1px solid var(--line)' : 'none',
+            paddingBottom: i < visibleItems.length - 1 ? 8 : 0,
+            borderBottom: i < visibleItems.length - 1 ? '1px solid var(--line)' : 'none',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-            <span style={{ color: 'var(--accent)', fontSize: 10, letterSpacing: '0.05em' }}>
-              {starsText(it.stars)}
+            {it.stars > 0 && (
+              <span style={{ color: 'var(--accent)', fontSize: 10, letterSpacing: '0.05em' }}>
+                {starsText(it.stars)}
+              </span>
+            )}
+            <span style={{ fontSize: 10, color: 'var(--ink-4)' }}>
+              {it.stars > 0 ? '· ' : ''}
+              {it.when}
             </span>
             <SourceTag source={it.source} />
-            <span style={{ fontSize: 10, color: 'var(--ink-4)' }}>· {it.when}</span>
           </div>
           <div
             className="jp-text"

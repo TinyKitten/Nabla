@@ -16,17 +16,18 @@ export interface StoreRatingResponse {
   sources: { appStore: boolean };
 }
 
-export type FeedbackSource = 'appStore' | 'googlePlay';
+export type FeedbackSource = 'github' | 'appStore' | 'googlePlay';
 
-export interface FeedbackEntry {
-  stars: number;
+export interface FeedbackEntrySnapshot {
   text: string;
   author: string;
-  when: string;
+  createdAt: number;
+  stars: number;
   source: FeedbackSource;
 }
 
-export interface StoreReviewsResponse {
-  items: FeedbackEntry[];
-  sources: { appStore: boolean; googlePlay: boolean };
+export interface FeedbackResponse {
+  items: FeedbackEntrySnapshot[];
+  hasMore: boolean;
+  sources: { github: boolean; appStore: boolean; googlePlay: boolean };
 }

@@ -32,7 +32,7 @@ export interface StoreRatingData {
   breakdown: number[];
 }
 
-export type FeedbackSource = 'appStore' | 'googlePlay';
+export type FeedbackSource = 'github' | 'appStore' | 'googlePlay';
 
 export interface FeedbackEntry {
   stars: number;
@@ -45,11 +45,7 @@ export interface FeedbackEntry {
 export interface FeedbackData {
   items: FeedbackEntry[];
   unread: number;
-}
-
-export interface StoreReviewsResponse {
-  items: FeedbackEntry[];
-  sources: { appStore: boolean; googlePlay: boolean };
+  hasMore?: boolean;
 }
 
 export interface PerformanceData {

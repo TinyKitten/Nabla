@@ -32,16 +32,20 @@ async function feedbackReply(): Promise<string> {
   try {
     const f = getCachedFeedback() ?? (await fetchFeedback());
     if (f.items.length === 0) {
-      return '新着のストアレビューはありません。';
+      return '新着のフィードバックはありません。';
     }
     const ios = f.items.filter((i) => i.source === 'appStore').length;
     const android = f.items.filter((i) => i.source === 'googlePlay').length;
+    const issues = f.items.filter((i) => i.source === 'github').length;
     const samples = f.items.slice(0, 3).map((i) => `「${i.text.slice(0, 40)}」`).join('、');
-    const breakdown =
-      ios && android ? `iOS ${ios} 件 / Android ${android} 件` : ios ? `iOS ${ios} 件` : `Android ${android} 件`;
-    return `直近の新着レビューは ${f.items.length} 件 (${breakdown})。${samples} など。Issue 化したいものがあれば教えてください。`;
+    const parts: string[] = [];
+    if (ios) parts.push(`iOS ${ios} 件`);
+    if (android) parts.push(`Android ${android} 件`);
+    if (issues) parts.push(`Issue ${issues} 件`);
+    const breakdown = parts.join(' / ');
+    return `直近の新着フィードバックは ${f.items.length} 件 (${breakdown})。${samples} など。Issue 化したいものがあれば教えてください。`;
   } catch {
-    return 'ストアレビューを取得できませんでした。App Store Connect / Google Play Console の接続設定を確認してください。';
+    return 'フィードバックを取得できませんでした。App Store Connect / Google Play Console / GitHub の接続設定を確認してください。';
   }
 }
 

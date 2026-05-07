@@ -1,9 +1,10 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { getAppStoreSnapshot } from './appStore.js';
 import { getGooglePlaySnapshot } from './googlePlay.js';
+import { getGitHubFeedbackSnapshot } from './github.js';
 import { aggregate } from './aggregate.js';
 import { buildFeedback } from './feedback.js';
-import type { StoreRatingResponse, StoreReviewsResponse } from './types.js';
+import type { FeedbackResponse, StoreRatingResponse } from './types.js';
 
 const PORT = Number(process.env.PROXY_PORT ?? 5174);
 
@@ -12,20 +13,30 @@ async function loadStoreRating(): Promise<StoreRatingResponse> {
   return aggregate(snap);
 }
 
-async function loadStoreReviews(): Promise<StoreReviewsResponse> {
-  const [appStore, googlePlay] = await Promise.all([
+async function loadFeedback(): Promise<FeedbackResponse> {
+  const [github, appStore, googlePlay] = await Promise.all([
+    getGitHubFeedbackSnapshot().catch((err) => {
+      console.warn('[feedback] GitHub fetch failed:', err);
+      return null;
+    }),
     getAppStoreSnapshot().catch((err) => {
-      console.warn('[store-reviews] App Store fetch failed:', err);
+      console.warn('[feedback] App Store fetch failed:', err);
       return null;
     }),
     getGooglePlaySnapshot().catch((err) => {
-      console.warn('[store-reviews] Google Play fetch failed:', err);
+      console.warn('[feedback] Google Play fetch failed:', err);
       return null;
     }),
   ]);
+  const built = buildFeedback(github, appStore, googlePlay);
   return {
-    items: buildFeedback(appStore, googlePlay),
-    sources: { appStore: appStore !== null, googlePlay: googlePlay !== null },
+    items: built.items,
+    hasMore: built.hasMore,
+    sources: {
+      github: github?.connected ?? false,
+      appStore: appStore !== null,
+      googlePlay: googlePlay !== null,
+    },
   };
 }
 
@@ -48,13 +59,13 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     }
     return;
   }
-  if (req.url === '/api/store-reviews') {
+  if (req.url === '/api/feedback') {
     try {
-      const data = await loadStoreReviews();
-      const status = data.sources.appStore || data.sources.googlePlay ? 200 : 503;
-      send(res, status, data);
+      const data = await loadFeedback();
+      const anySource = data.sources.github || data.sources.appStore || data.sources.googlePlay;
+      send(res, anySource ? 200 : 503, data);
     } catch (err) {
-      console.error('[store-reviews]', err);
+      console.error('[feedback]', err);
       send(res, 503, { error: err instanceof Error ? err.message : 'unknown' });
     }
     return;
