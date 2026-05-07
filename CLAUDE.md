@@ -27,7 +27,7 @@ There are no tests. Don't propose adding a test framework unless asked.
 `npm` workspaces, two apps:
 
 - `apps/web/` — the Vite + React UI (everything that used to be at the repo root). `index.html`, `vite.config.ts`, `tsconfig*.json`, `.oxlintrc.json`, `src/` all live here.
-- `apps/proxy/` — a tiny Node http server on `:5174` that holds the App Store Connect API key (the browser must not see it) and aggregates ratings across all Apple storefronts. Vite's `server.proxy` forwards `/api/*` to it, so the front-end always calls same-origin URLs.
+- `apps/proxy/` — a tiny Node http server on `:5174` that holds the App Store Connect API key (the browser must not see it) and fetches ratings from the JP App Store. Vite's `server.proxy` forwards `/api/*` to it, so the front-end always calls same-origin URLs.
 
 The web Vite config sets `envDir: '../../'` so both apps read the same root `.env.local`. Don't move secrets into `apps/web/.env.local` — they'd get bundled into the client.
 
@@ -62,7 +62,7 @@ The grid panel itself is also a drop target — dropping a pinned widget there u
 Most `WIDGET_DEFS[type].fetch()` are stubbed and return mock data with light randomness. The connected fetchers live in `apps/web/src/data/`:
 
 - **weather** → OpenWeather, browser-direct.
-- **storeRating** → `/api/store-rating` → `apps/proxy` → iTunes Lookup across ~155 Apple storefronts for headline numbers + App Store Connect Customer Reviews API for trend / breakdown / delta. App Store only — Google does not expose aggregate ratings count/breakdown through any official API, and scraping is out of scope.
+- **storeRating** → `/api/store-rating` → `apps/proxy` → iTunes Lookup against the JP storefront for headline numbers + App Store Connect Customer Reviews API for trend / breakdown / delta. App Store only — Google does not expose aggregate ratings count/breakdown through any official API, and scraping is out of scope.
 - **feedback** → `/api/feedback` → `apps/proxy` → three sources merged into a single `FeedbackEntry[]` (sorted by recency, each entry tagged with `source: 'github' | 'appStore' | 'googlePlay'`):
   - **GitHub Issues** in the private `TrainLCD/Issues` repo, filtered by the `🙏 Feedback` label. The proxy fetches one 100-item page; the response's `hasMore` reflects the `Link: rel="next"` header (the widget renders "100+" / "99+" when truncated). GitHub items have no rating, so `stars: 0` and the widget hides the star row.
   - **App Store Connect Customer Reviews** (text + title + reviewer + territory).
