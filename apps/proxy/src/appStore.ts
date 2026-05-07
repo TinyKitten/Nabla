@@ -7,6 +7,7 @@ const PAGE_LIMIT = 200;
 const MAX_PAGES = 5;
 const ASC_FETCH_TIMEOUT_MS = 10_000;
 const LOOKUP_FETCH_TIMEOUT_MS = 5_000;
+const SNAPSHOT_TTL_MS = 30 * 60 * 1000;
 
 interface CachedToken {
   token: string;
@@ -48,6 +49,10 @@ function getToken(): string {
 interface ReviewAttributes {
   rating: number;
   createdDate: string;
+  title?: string;
+  body?: string;
+  reviewerNickname?: string;
+  territory?: string;
 }
 
 interface ReviewRecord {
@@ -79,6 +84,10 @@ async function fetchTextReviews(appId: string): Promise<ReviewSample[]> {
       reviews.push({
         rating: r.attributes.rating,
         createdAt: Date.parse(r.attributes.createdDate),
+        title: r.attributes.title,
+        body: r.attributes.body,
+        reviewer: r.attributes.reviewerNickname,
+        territory: r.attributes.territory,
       });
     }
     url = json.links?.next;
@@ -128,7 +137,7 @@ export interface AppStoreSnapshot {
   textReviews: ReviewSample[];
 }
 
-export async function fetchAppStore(): Promise<AppStoreSnapshot> {
+async function fetchAppStore(): Promise<AppStoreSnapshot> {
   const appId = process.env.APP_STORE_CONNECT_APP_ID;
   if (!appId) throw new Error('APP_STORE_CONNECT_APP_ID not set');
   const [aggregate, textReviews] = await Promise.all([
@@ -140,4 +149,22 @@ export async function fetchAppStore(): Promise<AppStoreSnapshot> {
     globalAverage: aggregate.average,
     textReviews,
   };
+}
+
+let snapshotCache: { data: AppStoreSnapshot; at: number } | null = null;
+let snapshotInFlight: Promise<AppStoreSnapshot> | null = null;
+
+export async function getAppStoreSnapshot(): Promise<AppStoreSnapshot> {
+  if (snapshotCache && Date.now() - snapshotCache.at < SNAPSHOT_TTL_MS) return snapshotCache.data;
+  if (snapshotInFlight) return snapshotInFlight;
+  snapshotInFlight = (async () => {
+    try {
+      const snap = await fetchAppStore();
+      snapshotCache = { data: snap, at: Date.now() };
+      return snap;
+    } finally {
+      snapshotInFlight = null;
+    }
+  })();
+  return snapshotInFlight;
 }

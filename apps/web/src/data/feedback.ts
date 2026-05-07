@@ -1,4 +1,4 @@
-import type { FeedbackData, FeedbackEntry } from '../types';
+import type { FeedbackData, FeedbackEntry, FeedbackSource } from '../types';
 import { setToolConnected } from '../state/toolConnections';
 
 const FETCH_TIMEOUT_MS = 15_000;
@@ -9,12 +9,14 @@ interface FeedbackEntrySnapshot {
   author: string;
   createdAt: number;
   stars: number;
+  source: FeedbackSource;
 }
 
 interface FeedbackResponse {
   items: FeedbackEntrySnapshot[];
+  unread: number;
   hasMore: boolean;
-  sources: { github: boolean };
+  sources: { github: boolean; appStore: boolean; googlePlay: boolean };
 }
 
 let cached: { data: FeedbackData; at: number } | null = null;
@@ -46,6 +48,7 @@ function toEntry(snap: FeedbackEntrySnapshot): FeedbackEntry {
     text: snap.text,
     author: snap.author,
     when: relativeTime(snap.createdAt),
+    source: snap.source,
   };
 }
 
@@ -66,23 +69,22 @@ export async function fetchFeedback(): Promise<FeedbackData> {
       const res = await fetch('/api/feedback', { signal: ctrl.signal });
       if (!res.ok) {
         setToolConnected('github', false);
+        setToolConnected('appStoreConnect', false);
+        setToolConnected('googlePlayConsole', false);
         throw new Error(`feedback proxy ${res.status}`);
       }
       const json = (await res.json()) as FeedbackResponse;
       setToolConnected('github', json.sources.github);
-      if (!json.sources.github) {
-        throw new Error('github not connected');
-      }
+      setToolConnected('appStoreConnect', json.sources.appStore);
+      setToolConnected('googlePlayConsole', json.sources.googlePlay);
       const items = json.items.map(toEntry);
-      const data: FeedbackData = {
-        items,
-        unread: items.length,
-        hasMore: json.hasMore,
-      };
+      const data: FeedbackData = { items, unread: json.unread, hasMore: json.hasMore };
       cached = { data, at: Date.now() };
       return data;
     } catch (err) {
       setToolConnected('github', false);
+      setToolConnected('appStoreConnect', false);
+      setToolConnected('googlePlayConsole', false);
       throw err;
     } finally {
       clearTimeout(timer);

@@ -13,6 +13,7 @@ import { fetchFeedback } from '../data/feedback';
 import type {
   DragHandleProps,
   FeedbackData,
+  FeedbackSource,
   HourlyForecast,
   PerformanceData,
   StoreRatingData,
@@ -42,7 +43,7 @@ export const WIDGET_DEFS: Record<WidgetType, WidgetDef> = {
     fetch: fetchStoreRating,
   },
   feedback: {
-    title: 'TrainLCD · 新着フィードバック',
+    title: 'TrainLCD · 新着レビュー',
     icon: 'message-dots',
     fetch: fetchFeedback,
   },
@@ -903,6 +904,26 @@ function starsText(n: number) {
   return '★'.repeat(n) + '☆'.repeat(5 - n);
 }
 
+function SourceTag({ source }: { source: FeedbackSource }) {
+  if (source === 'github') return null;
+  const label = source === 'appStore' ? 'iOS' : 'Android';
+  return (
+    <span
+      style={{
+        fontSize: 9,
+        letterSpacing: '0.06em',
+        color: 'var(--ink-4)',
+        border: '1px solid var(--line)',
+        borderRadius: 4,
+        padding: '0 4px',
+        lineHeight: '14px',
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
 function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData | null }) {
   if (!data) return <Skeleton size={size} />;
   if (size === 'sm') {
@@ -939,12 +960,29 @@ function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData |
           color: 'var(--ink-4)',
         }}
       >
-        フィードバックはまだありません
+        レビューもしくはフィードバックはまだありません
       </div>
     );
   }
   if (size === 'md') {
     const top = data.items[0];
+    if (!top) {
+      return (
+        <div
+          className="jp-text"
+          style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 11,
+            color: 'var(--ink-4)',
+          }}
+        >
+          新着のレビューもしくはフィードバックはありません
+        </div>
+      );
+    }
     return (
       <>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
@@ -953,6 +991,7 @@ function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData |
               {starsText(top.stars)}
             </span>
           )}
+          <SourceTag source={top.source} />
           <span style={{ fontSize: 10, color: 'var(--ink-4)' }}>{top.when}</span>
         </div>
         <div
@@ -1000,6 +1039,7 @@ function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData |
               {it.stars > 0 ? '· ' : ''}
               {it.when}
             </span>
+            <SourceTag source={it.source} />
           </div>
           <div
             className="jp-text"
