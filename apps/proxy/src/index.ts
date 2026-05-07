@@ -5,7 +5,13 @@ import { getGitHubFeedbackSnapshot } from './github.js';
 import { aggregate } from './aggregate.js';
 import { buildFeedback } from './feedback.js';
 import { fetchLinearTasks } from './linear.js';
-import type { FeedbackResponse, StoreRatingResponse, TasksResponse } from './types.js';
+import { getSentryPerformanceSnapshot } from './sentry.js';
+import type {
+  FeedbackResponse,
+  PerformanceResponse,
+  StoreRatingResponse,
+  TasksResponse,
+} from './types.js';
 
 const PORT = Number(process.env.PROXY_PORT ?? 5174);
 const TASKS_TTL_MS = 60 * 1000;
@@ -43,6 +49,30 @@ async function loadFeedback(): Promise<FeedbackResponse> {
       appStore: appStore !== null,
       googlePlay: googlePlay !== null,
     },
+  };
+}
+
+async function loadPerformance(): Promise<PerformanceResponse> {
+  const snap = await getSentryPerformanceSnapshot();
+  if (!snap) {
+    return {
+      crashFree: 0,
+      delta: '',
+      coldStart: 0,
+      sparkline: [],
+      sessions: 0,
+      anr: 0,
+      sources: { sentry: false },
+    };
+  }
+  return {
+    crashFree: snap.crashFree,
+    delta: snap.delta,
+    coldStart: snap.coldStart,
+    sparkline: snap.sparkline,
+    sessions: snap.sessions,
+    anr: snap.anr,
+    sources: { sentry: snap.connected },
   };
 }
 
@@ -94,6 +124,16 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
       send(res, anySource ? 200 : 503, data);
     } catch (err) {
       console.error('[feedback]', err);
+      send(res, 503, { error: err instanceof Error ? err.message : 'unknown' });
+    }
+    return;
+  }
+  if (req.url === '/api/performance') {
+    try {
+      const data = await loadPerformance();
+      send(res, data.sources.sentry ? 200 : 503, data);
+    } catch (err) {
+      console.error('[performance]', err);
       send(res, 503, { error: err instanceof Error ? err.message : 'unknown' });
     }
     return;

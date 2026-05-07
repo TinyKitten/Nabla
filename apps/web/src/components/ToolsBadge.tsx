@@ -13,6 +13,7 @@ const TOOLS: ToolEntry[] = [
   { key: 'googlePlayConsole', name: 'Google Play Console', desc: 'Android レビュー' },
   { key: 'github', name: 'GitHub', desc: 'フィードバック' },
   { key: 'linear', name: 'Linear', desc: 'タスク' },
+  { key: 'sentry', name: 'Sentry', desc: 'パフォーマンス' },
 ];
 
 const COLOR_CONNECTED = '#22c55e';

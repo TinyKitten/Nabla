@@ -30,6 +30,16 @@ export interface TasksResponse {
   sources: { linear: boolean };
 }
 
+export interface PerformanceResponse {
+  crashFree: number;
+  delta: string;
+  coldStart: number;
+  sparkline: number[];
+  sessions: number;
+  anr: number;
+  sources: { sentry: boolean };
+}
+
 export type FeedbackSource = 'github' | 'appStore' | 'googlePlay';
 
 export interface FeedbackEntrySnapshot {

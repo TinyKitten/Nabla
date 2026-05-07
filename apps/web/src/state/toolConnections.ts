@@ -5,7 +5,8 @@ export type ToolName =
   | 'appStoreConnect'
   | 'googlePlayConsole'
   | 'github'
-  | 'linear';
+  | 'linear'
+  | 'sentry';
 
 export type ToolConnectionState = Record<ToolName, boolean>;
 
@@ -15,6 +16,7 @@ let state: ToolConnectionState = {
   googlePlayConsole: false,
   github: false,
   linear: false,
+  sentry: false,
 };
 
 const listeners = new Set<() => void>();

@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { fetchWeather, getCachedWeather } from '../data/weather';
 import { fetchStoreRating, getCachedStoreRating } from '../data/storeRating';
 import { fetchFeedback, getCachedFeedback } from '../data/feedback';
+import { fetchPerformance, getCachedPerformance } from '../data/performance';
 import { addLocalTask, fetchTasks, getCachedTasks } from '../data/tasks';
 import type { Message, ToolCall, WidgetType } from '../types';
 
@@ -49,6 +50,16 @@ async function tasksReply(): Promise<string> {
   }
 }
 
+async function perfReply(): Promise<string> {
+  try {
+    const p = getCachedPerformance() ?? (await fetchPerformance());
+    const deltaSuffix = p.delta ? `(直近比 ${p.delta})` : '';
+    return `直近 24h のクラッシュフリー率は **${p.crashFree.toFixed(2)}%** ${deltaSuffix}、コールドスタートは平均 ${p.coldStart.toFixed(2)} 秒、ANR は ${p.anr.toFixed(2)}% です(${p.sessions.toLocaleString()} セッション)。`;
+  } catch {
+    return 'パフォーマンス情報を取得できませんでした。Sentry の接続設定を確認してください。';
+  }
+}
+
 async function feedbackReply(): Promise<string> {
   try {
     const f = getCachedFeedback() ?? (await fetchFeedback());
@@ -90,7 +101,7 @@ export const QUICK_REPLIES: Record<string, QuickReply> = {
   },
   perf: {
     tools: [{ name: 'fetch_metrics', label: 'パフォーマンス指標を取得中', icon: 'sparkle' }],
-    text: '直近のパフォーマンスは良好です。クラッシュフリー率は **99.84%**(先週比 +0.05%)、コールドスタートは平均 1.21秒。週次トレンドは緩やかな改善傾向にあります。',
+    text: perfReply,
     widget: 'performance',
   },
   tasks: {
