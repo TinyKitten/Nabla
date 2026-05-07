@@ -176,7 +176,12 @@ export function useChat(initialMessages: Message[] = []) {
             prev.map((m) => (m.id === aiId ? { ...m, tools: [...tools] } : m)),
           );
           await new Promise((r) => setTimeout(r, 350));
-          if (streamRef.current !== aiId) return;
+          if (streamRef.current !== aiId) {
+            setMessages((prev) =>
+              prev.map((m) => (m.id === aiId ? { ...m, tools: [] } : m)),
+            );
+            return;
+          }
           const added = addLocalTask(taskAddText);
           tools[0].status = 'done';
           reply = added
