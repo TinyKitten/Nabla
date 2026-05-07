@@ -6,6 +6,7 @@ export interface LinearTask {
   id: string;
   identifier: string;
   text: string;
+  description: string;
   url: string;
   priority: number;
   dueDate: string | null;
@@ -20,6 +21,7 @@ interface LinearIssuesResponse {
         id: string;
         identifier: string;
         title: string;
+        description: string | null;
         url: string;
         priority: number;
         dueDate: string | null;
@@ -28,6 +30,29 @@ interface LinearIssuesResponse {
     };
   };
   errors?: { message: string }[];
+}
+
+function normalizeDescription(raw: string | null): string {
+  if (!raw) return '';
+  return raw
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/<\/?[a-zA-Z][^>]*>/g, ' ')
+    .replace(/^\s{0,3}#{1,6}\s+/gm, '')
+    .replace(/^\s{0,3}>+\s?/gm, '')
+    .replace(/^\s{0,3}(?:[-*+]|\d+[.)])\s+/gm, '')
+    .replace(/^\s{0,3}(?:[-*_]\s*){3,}\s*$/gm, ' ')
+    .replace(/(\*\*\*|___)([^*_]+)\1/g, '$2')
+    .replace(/(\*\*|__)([^*_]+)\1/g, '$2')
+    .replace(/(\*|_)([^*_\n]+)\1/g, '$2')
+    .replace(/~~([^~]+)~~/g, '$1')
+    .replace(/==([^=]+)==/g, '$1')
+    .replace(/\\([\\`*_{}\[\]()#+\-.!>])/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 const QUERY = `query NablaOpenIssues($first: Int!) {
@@ -40,6 +65,7 @@ const QUERY = `query NablaOpenIssues($first: Int!) {
       id
       identifier
       title
+      description
       url
       priority
       dueDate
@@ -73,6 +99,7 @@ export async function fetchLinearTasks(): Promise<LinearTask[]> {
       id: n.id,
       identifier: n.identifier,
       text: n.title,
+      description: normalizeDescription(n.description),
       url: n.url,
       priority: n.priority,
       dueDate: n.dueDate,
