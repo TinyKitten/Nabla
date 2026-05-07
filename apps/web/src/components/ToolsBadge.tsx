@@ -12,6 +12,7 @@ const TOOLS: ToolEntry[] = [
   { key: 'appStoreConnect', name: 'App Store Connect', desc: 'iOS 評価 / レビュー' },
   { key: 'googlePlayConsole', name: 'Google Play Console', desc: 'Android レビュー' },
   { key: 'github', name: 'GitHub', desc: 'フィードバック' },
+  { key: 'linear', name: 'Linear', desc: 'タスク' },
 ];
 
 const COLOR_CONNECTED = '#22c55e';

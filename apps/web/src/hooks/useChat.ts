@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { fetchWeather, getCachedWeather } from '../data/weather';
 import { fetchStoreRating, getCachedStoreRating } from '../data/storeRating';
 import { fetchFeedback, getCachedFeedback } from '../data/feedback';
+import { addLocalTask, fetchTasks, getCachedTasks } from '../data/tasks';
 import type { Message, ToolCall, WidgetType } from '../types';
 
 interface QuickReply {
@@ -25,6 +26,26 @@ async function ratingReply(): Promise<string> {
     return `TrainLCD の App Store 評価は **★${r.stars}**(${r.reviews.toLocaleString()} 件)です。テキストレビューは${r.delta}追加されました。`;
   } catch {
     return 'App Store 評価を取得できませんでした。App Store Connect の接続設定を確認してください。';
+  }
+}
+
+async function tasksReply(): Promise<string> {
+  try {
+    const t = getCachedTasks() ?? (await fetchTasks());
+    const open = t.items.filter((i) => !i.done);
+    if (open.length === 0) {
+      return '未完了のタスクはありません。お疲れさまでした。';
+    }
+    const linearOpen = open.filter((i) => i.source === 'linear').length;
+    const localOpen = open.filter((i) => i.source === 'local').length;
+    const breakdownParts: string[] = [];
+    if (linearOpen) breakdownParts.push(`Linear ${linearOpen} 件`);
+    if (localOpen) breakdownParts.push(`ローカル ${localOpen} 件`);
+    const breakdown = breakdownParts.join(' / ');
+    const samples = open.slice(0, 3).map((i) => `「${i.text.slice(0, 40)}」`).join('、');
+    return `未完了のタスクは ${open.length} 件です(${breakdown})。${samples} など。「タスク追加 X」で新しいタスクを追加できます。`;
+  } catch {
+    return 'タスク情報を取得できませんでした。Linear の接続設定を確認してください。';
   }
 }
 
@@ -72,6 +93,11 @@ export const QUICK_REPLIES: Record<string, QuickReply> = {
     text: '直近のパフォーマンスは良好です。クラッシュフリー率は **99.84%**(先週比 +0.05%)、コールドスタートは平均 1.21秒。週次トレンドは緩やかな改善傾向にあります。',
     widget: 'performance',
   },
+  tasks: {
+    tools: [{ name: 'fetch_tasks', label: 'タスクを取得中', icon: 'check-square' }],
+    text: tasksReply,
+    widget: 'tasks',
+  },
   addWidget: {
     tools: [],
     text: 'どんなウィジェットを追加しますか？よく使われるのは以下です:\n\n- **天気** — 現在地の気温と天気\n- **App Store 評価** — App Store の星評価とトレンド\n- **新着レビュー** — 直近のユーザーレビュー\n- **パフォーマンス** — クラッシュフリー率と起動時間\n- **タスク** — 進行中のタスク一覧\n\n名前を教えていただくか、「天気を追加して」のようにお伝えください。',
@@ -85,6 +111,23 @@ function detectIntent(text: string): keyof typeof QUICK_REPLIES | null {
   if (/評価|レーティング|星|rating|store/.test(t)) return 'rating';
   if (/フィードバック|レビュー|feedback|review|声/.test(t)) return 'feedback';
   if (/パフォーマンス|クラッシュ|起動|perf|crash/.test(t)) return 'perf';
+  if (/タスク|todo|task/.test(t)) return 'tasks';
+  return null;
+}
+
+const TASK_ADD_PATTERNS: RegExp[] = [
+  /^タスク追加[:: ]\s*(.+)$/,
+  /^タスクに追加[:: ]\s*(.+)$/,
+  /^(.+?)をタスクに追加(?:して)?$/,
+  /^todo[:: ]\s*(.+)$/i,
+  /^add task[:: ]\s*(.+)$/i,
+];
+
+function detectTaskAdd(text: string): string | null {
+  for (const re of TASK_ADD_PATTERNS) {
+    const m = text.match(re);
+    if (m && m[1].trim()) return m[1].trim();
+  }
   return null;
 }
 
@@ -118,7 +161,8 @@ export function useChat(initialMessages: Message[] = []) {
       setStreaming(true);
       streamRef.current = aiId;
 
-      const intent = detectIntent(text);
+      const taskAddText = detectTaskAdd(text);
+      const intent = taskAddText ? null : detectIntent(text);
       const canned = intent ? QUICK_REPLIES[intent] : null;
 
       try {
@@ -126,7 +170,25 @@ export function useChat(initialMessages: Message[] = []) {
         let widget: WidgetType | undefined;
         let tools: ToolCall[] = [];
 
-        if (canned) {
+        if (taskAddText) {
+          tools = [{ name: 'add_task', label: 'タスクを追加中', icon: 'check-square', status: 'running' }];
+          setMessages((prev) =>
+            prev.map((m) => (m.id === aiId ? { ...m, tools: [...tools] } : m)),
+          );
+          await new Promise((r) => setTimeout(r, 350));
+          if (streamRef.current !== aiId) {
+            setMessages((prev) =>
+              prev.map((m) => (m.id === aiId ? { ...m, tools: [] } : m)),
+            );
+            return;
+          }
+          const added = addLocalTask(taskAddText);
+          tools[0].status = 'done';
+          reply = added
+            ? `「${added.text}」をタスクに追加しました。完了したらチェックを入れてください。`
+            : 'タスクの内容が空でした。もう一度お試しください。';
+          widget = 'tasks';
+        } else if (canned) {
           const replyPromise: Promise<string> =
             typeof canned.text === 'function' ? canned.text() : Promise.resolve(canned.text);
           for (let idx = 0; idx < canned.tools.length; idx++) {

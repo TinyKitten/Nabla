@@ -4,9 +4,14 @@ import { getGooglePlaySnapshot } from './googlePlay.js';
 import { getGitHubFeedbackSnapshot } from './github.js';
 import { aggregate } from './aggregate.js';
 import { buildFeedback } from './feedback.js';
-import type { FeedbackResponse, StoreRatingResponse } from './types.js';
+import { fetchLinearTasks } from './linear.js';
+import type { FeedbackResponse, StoreRatingResponse, TasksResponse } from './types.js';
 
 const PORT = Number(process.env.PROXY_PORT ?? 5174);
+const TASKS_TTL_MS = 60 * 1000;
+
+let cachedTasks: { data: TasksResponse; at: number } | null = null;
+let tasksInFlight: Promise<TasksResponse> | null = null;
 
 async function loadStoreRating(): Promise<StoreRatingResponse> {
   const snap = await getAppStoreSnapshot();
@@ -41,6 +46,28 @@ async function loadFeedback(): Promise<FeedbackResponse> {
   };
 }
 
+async function loadTasks(): Promise<TasksResponse> {
+  if (cachedTasks && Date.now() - cachedTasks.at < TASKS_TTL_MS) return cachedTasks.data;
+  if (tasksInFlight) return tasksInFlight;
+  tasksInFlight = (async () => {
+    try {
+      const items = await fetchLinearTasks();
+      const data: TasksResponse = { items, sources: { linear: true } };
+      cachedTasks = { data, at: Date.now() };
+      return data;
+    } catch (err) {
+      const data: TasksResponse = { items: [], sources: { linear: false } };
+      console.warn('[tasks] linear fetch failed:', err instanceof Error ? err.message : err);
+      return data;
+    }
+  })();
+  try {
+    return await tasksInFlight;
+  } finally {
+    tasksInFlight = null;
+  }
+}
+
 function send(res: ServerResponse, status: number, body: unknown) {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' });
   res.end(JSON.stringify(body));
@@ -69,6 +96,10 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
       console.error('[feedback]', err);
       send(res, 503, { error: err instanceof Error ? err.message : 'unknown' });
     }
+    return;
+  }
+  if (req.url === '/api/tasks') {
+    send(res, 200, await loadTasks());
     return;
   }
   send(res, 404, { error: 'not found' });

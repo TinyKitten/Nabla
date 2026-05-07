@@ -57,7 +57,7 @@ The drop target inspects `dataTransfer.types` to decide what to do:
 The grid panel itself is also a drop target — dropping a pinned widget there unpins it.
 
 **3. `useChat` is fake — mostly.**
-`src/hooks/useChat.ts` matches user input against `QUICK_REPLIES` (regex intent detection: 天気/評価/フィードバック/パフォーマンス/ウィジェット追加), runs simulated tool calls with timeouts, then character-streams the canned reply. There is no model call. Each canned `text` can be a static string or an async function — the `weather` reply is the latter and pulls from `getCachedWeather()` / `fetchWeather()` so it stays in sync with what the widget shows.
+`src/hooks/useChat.ts` matches user input against `QUICK_REPLIES` (regex intent detection: 天気/評価/フィードバック/パフォーマンス/ウィジェット追加) plus a `タスク追加 X` / `add task: X` shortcut that calls `addLocalTask()` directly, runs simulated tool calls with timeouts, then character-streams the canned reply. There is no model call. Each canned `text` can be a static string or an async function — the `weather` reply is the latter and pulls from `getCachedWeather()` / `fetchWeather()` so it stays in sync with what the widget shows.
 
 Most `WIDGET_DEFS[type].fetch()` are stubbed and return mock data with light randomness. The connected fetchers live in `apps/web/src/data/`:
 
@@ -68,13 +68,16 @@ Most `WIDGET_DEFS[type].fetch()` are stubbed and return mock data with light ran
   - **App Store Connect Customer Reviews** (text + title + reviewer + territory).
   - **Google Play `androidpublisher` Reviews** (text + author). Google Play *is* used here because the per-review API returns text, unlike the missing aggregate ratings endpoint.
   - The `unread` count is the number of GitHub items only — store reviews have no unread concept (parent issue #3 plans localStorage-based last-seen for the GitHub side).
+- **tasks** → `/api/tasks` → `apps/proxy` → Linear GraphQL for all open (`unstarted` / `started`) issues in the workspace, merged with localStorage local tasks + done overrides. The query is workspace-wide (not scoped to `viewer.assignedIssues`) because Nabla is a single-user tool — restricting to assignees would hide unassigned issues that the user is still tracking.
 
-`performance` and `tasks` are still mocked (Issues #4 / #5).
+`performance` is still mocked (Issue #4).
+
+The tasks fetcher merges Linear and local entries into a single list. Local tasks are persisted under `nabla.tasks.v1` in `localStorage` (records with stable ids). Done state is stored two ways: for `local:` ids it lives on the record itself; for `linear:` ids it's a per-issue override map (Linear write-back is intentionally out of scope). Mutations dispatch a `nabla-tasks-changed` `CustomEvent` on `window`, which the tasks instance of `useWidget` listens to so the widget refreshes immediately after a chat-driven add.
 
 The eventual plan, per the design intent, is an MCP-style tool layer ("OpenClaw") wired in behind the chat. Until each widget moves over, anything *not* under `src/data/` that looks like an API call is a `setTimeout`.
 
 **4. Tool connection state.**
-`apps/web/src/state/toolConnections.ts` is a `useSyncExternalStore`-backed module keyed by MCP tool name. Keys today: `openWeather`, `appStoreConnect`, `googlePlayConsole`, `github`. `ToolsBadge` derives its count and per-tool dot colors from this store, and real data fetchers in `apps/web/src/data/` are responsible for calling `setToolConnected(name, true|false)` on success / failure. The proxy endpoints return per-source flags (e.g. `sources.appStore`, `sources.googlePlay`, `sources.github`) and the client fetcher mirrors them into the store. Add a new key here only when an actual connection lands.
+`apps/web/src/state/toolConnections.ts` is a `useSyncExternalStore`-backed module keyed by MCP tool name. Keys today: `openWeather`, `appStoreConnect`, `googlePlayConsole`, `github`, `linear`. `ToolsBadge` derives its count and per-tool dot colors from this store, and real data fetchers in `apps/web/src/data/` are responsible for calling `setToolConnected(name, true|false)` on success / failure. The proxy endpoints return per-source flags (e.g. `sources.appStore`, `sources.googlePlay`, `sources.github`, `sources.linear`) and the client fetcher mirrors them into the store. Add a new key here only when an actual connection lands.
 
 ## Component map (only the non-obvious parts)
 
@@ -90,7 +93,7 @@ The eventual plan, per the design intent, is an MCP-style tool layer ("OpenClaw"
 - **Oxlint with default rules only.** `apps/web/.oxlintrc.json` is intentionally near-empty (just `$schema` + `ignorePatterns`). **Do not add plugins or `rules` overrides without explicit user agreement.** A previous setup added react-perf / unicorn / jsx-a11y plugins and then needed many `"off"` overrides to silence false positives — that churn is what we're avoiding.
 - **Japanese UI strings.** Most user-facing copy is Japanese. Match the existing tone (です/ます). Code comments and identifiers stay English.
 - **Don't restore removed variants.** `variant-d`, `variant-e`, `layout-timeline`, `layout-workbench`, `design-canvas` from the original design bundle were intentionally not ported.
-- **Local secrets in root `.env.local`.** Both the browser-side keys (`VITE_OPENWEATHER_API_KEY`) and the proxy-only keys (`APP_STORE_CONNECT_*`, `GOOGLE_PLAY_PACKAGE_NAME`, `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_PATH`, `GITHUB_TOKEN`) live in the repo root's `.env.local`. The proxy reads it via Node's `--env-file`; Vite reads it via `envDir: '../../'`. Type any new client-side key in `apps/web/src/vite-env.d.ts`. Missing key → the widget shows skeleton and the relevant tool stays disconnected; that's the intended fallback, not a bug.
+- **Local secrets in root `.env.local`.** Both the browser-side keys (`VITE_OPENWEATHER_API_KEY`) and the proxy-only keys (`APP_STORE_CONNECT_*`, `GOOGLE_PLAY_PACKAGE_NAME`, `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_PATH`, `GITHUB_TOKEN`, `LINEAR_API_KEY`) live in the repo root's `.env.local`. The proxy reads it via Node's `--env-file`; Vite reads it via `envDir: '../../'`. Type any new client-side key in `apps/web/src/vite-env.d.ts`. Missing key → the widget shows skeleton (or, for tasks, only the local list) and the relevant tool stays disconnected; that's the intended fallback, not a bug.
 - **Branch naming.** Use the full word `feature/` (not `feat/`) as the prefix for feature branches — e.g. `feature/issue-1-weather`. Same expectation likely applies to other prefixes (`fix/`, `chore/`).
 - **PR assignee.** When opening a PR, assign it to `@TinyKitten` (pass `--assignee TinyKitten` to `gh pr create`). This is a single-maintainer repo; assignment makes the PR show up on the author's dashboard.
 - **Keep the PR description in sync with the diff.** Whenever new commits are pushed to an existing PR (or its scope shifts), update the PR body with `gh pr edit <num> --body ...` so the description always reflects what's actually in the PR. Don't let description and diff drift apart.

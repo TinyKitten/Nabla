@@ -16,6 +16,20 @@ export interface StoreRatingResponse {
   sources: { appStore: boolean };
 }
 
+export interface TasksResponse {
+  items: {
+    id: string;
+    identifier: string;
+    text: string;
+    url: string;
+    priority: number;
+    dueDate: string | null;
+    stateName: string;
+    stateType: string;
+  }[];
+  sources: { linear: boolean };
+}
+
 export type FeedbackSource = 'github' | 'appStore' | 'googlePlay';
 
 export interface FeedbackEntrySnapshot {
