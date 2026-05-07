@@ -11,6 +11,7 @@ import { fetchWeather } from '../data/weather';
 import { fetchStoreRating } from '../data/storeRating';
 import { fetchTasks, toggleTaskDone, TASKS_CHANGED_EVENT } from '../data/tasks';
 import { fetchFeedback } from '../data/feedback';
+import { fetchPerformance } from '../data/performance';
 import type {
   DragHandleProps,
   FeedbackData,
@@ -51,14 +52,7 @@ export const WIDGET_DEFS: Record<WidgetType, WidgetDef> = {
   performance: {
     title: 'TrainLCD · パフォーマンス',
     icon: 'activity',
-    fetch: async (): Promise<PerformanceData> => ({
-      crashFree: 99.84,
-      delta: '+0.05%',
-      coldStart: 1.21,
-      sparkline: [99.6, 99.7, 99.7, 99.75, 99.78, 99.8, 99.84],
-      sessions: 28430,
-      anr: 0.12,
-    }),
+    fetch: fetchPerformance,
   },
   tasks: {
     title: '今日のタスク',
