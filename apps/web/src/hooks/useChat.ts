@@ -176,6 +176,7 @@ export function useChat(initialMessages: Message[] = []) {
             prev.map((m) => (m.id === aiId ? { ...m, tools: [...tools] } : m)),
           );
           await new Promise((r) => setTimeout(r, 350));
+          if (streamRef.current !== aiId) return;
           const added = addLocalTask(taskAddText);
           tools[0].status = 'done';
           reply = added

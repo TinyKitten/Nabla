@@ -97,29 +97,32 @@ export async function fetchTasks(): Promise<TasksData> {
   if (fresh) return fresh;
   if (inFlight) return inFlight;
   inFlight = (async () => {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
-    let linear: LinearTaskItem[] = [];
-    let linearConnected = false;
-    let fetchOk = false;
     try {
-      const res = await fetch('/api/tasks', { signal: ctrl.signal });
-      if (res.ok) {
-        const json = (await res.json()) as TasksApiResponse;
-        linear = json.items;
-        linearConnected = json.sources.linear;
-        fetchOk = true;
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+      let linear: LinearTaskItem[] = [];
+      let linearConnected = false;
+      let fetchOk = false;
+      try {
+        const res = await fetch('/api/tasks', { signal: ctrl.signal });
+        if (res.ok) {
+          const json = (await res.json()) as TasksApiResponse;
+          linear = json.items;
+          linearConnected = json.sources.linear;
+          fetchOk = true;
+        }
+      } catch {
+        linearConnected = false;
+      } finally {
+        clearTimeout(timer);
       }
-    } catch {
-      linearConnected = false;
+      setToolConnected('linear', linearConnected);
+      const data = buildSnapshot(linear, readState());
+      if (fetchOk) cached = { data, at: Date.now() };
+      return data;
     } finally {
-      clearTimeout(timer);
+      inFlight = null;
     }
-    setToolConnected('linear', linearConnected);
-    const data = buildSnapshot(linear, readState());
-    if (fetchOk) cached = { data, at: Date.now() };
-    inFlight = null;
-    return data;
   })();
   return inFlight;
 }
