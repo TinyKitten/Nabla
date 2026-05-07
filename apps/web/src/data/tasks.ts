@@ -101,12 +101,14 @@ export async function fetchTasks(): Promise<TasksData> {
     const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
     let linear: LinearTaskItem[] = [];
     let linearConnected = false;
+    let fetchOk = false;
     try {
       const res = await fetch('/api/tasks', { signal: ctrl.signal });
       if (res.ok) {
         const json = (await res.json()) as TasksApiResponse;
         linear = json.items;
         linearConnected = json.sources.linear;
+        fetchOk = true;
       }
     } catch {
       linearConnected = false;
@@ -115,7 +117,7 @@ export async function fetchTasks(): Promise<TasksData> {
     }
     setToolConnected('linear', linearConnected);
     const data = buildSnapshot(linear, readState());
-    cached = { data, at: Date.now() };
+    if (fetchOk) cached = { data, at: Date.now() };
     inFlight = null;
     return data;
   })();
