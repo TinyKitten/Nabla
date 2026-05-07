@@ -164,11 +164,38 @@ async function streamGitHubImage(res: ServerResponse, raw: string) {
   if (token) headers.Authorization = `Bearer ${token}`;
   let upstream: Response;
   try {
-    upstream = await fetch(url.toString(), {
-      headers,
-      redirect: 'follow',
-      signal: AbortSignal.timeout(GITHUB_IMAGE_FETCH_TIMEOUT_MS),
-    });
+    const signal = AbortSignal.timeout(GITHUB_IMAGE_FETCH_TIMEOUT_MS);
+    const MAX_REDIRECTS = 5;
+    let current = url;
+    let hops = 0;
+    while (true) {
+      const r = await fetch(current.toString(), { headers, redirect: 'manual', signal });
+      if (r.status < 300 || r.status >= 400) {
+        upstream = r;
+        break;
+      }
+      const loc = r.headers.get('location');
+      if (!loc) {
+        upstream = r;
+        break;
+      }
+      if (++hops > MAX_REDIRECTS) {
+        send(res, 502, { error: 'too many redirects' });
+        return;
+      }
+      let next: URL;
+      try {
+        next = new URL(loc, current);
+      } catch {
+        send(res, 502, { error: 'invalid redirect target' });
+        return;
+      }
+      if (next.protocol !== 'https:' || !isAllowedGitHubHost(next.hostname)) {
+        send(res, 400, { error: 'redirect to disallowed host' });
+        return;
+      }
+      current = next;
+    }
   } catch (err) {
     console.warn('[github-image] fetch failed:', err instanceof Error ? err.message : err);
     send(res, 502, { error: 'upstream fetch failed' });

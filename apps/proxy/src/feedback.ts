@@ -15,7 +15,7 @@ function reviewToEntry(
   return {
     stars: Math.max(1, Math.min(5, Math.round(r.rating))),
     title: title || undefined,
-    text: text || title,
+    text,
     author: r.reviewer?.trim() || '匿名',
     createdAt: r.createdAt,
     source,

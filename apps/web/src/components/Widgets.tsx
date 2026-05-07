@@ -988,9 +988,18 @@ function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData |
     return (
       <div
         data-widget-control
+        role="button"
+        tabIndex={0}
         onClick={(e) => {
           e.stopPropagation();
           openFeedbackDetail(top);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            e.stopPropagation();
+            openFeedbackDetail(top);
+          }
         }}
         style={{
           flex: 1,
@@ -1059,9 +1068,18 @@ function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData |
         <div
           key={i}
           data-widget-control
+          role="button"
+          tabIndex={0}
           onClick={(e) => {
             e.stopPropagation();
             openFeedbackDetail(it);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              e.stopPropagation();
+              openFeedbackDetail(it);
+            }
           }}
           style={{
             paddingBottom: i < visibleItems.length - 1 ? 8 : 0,

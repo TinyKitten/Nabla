@@ -25,6 +25,7 @@ function ImageItem({ src }: { src: string }) {
       href={src}
       target="_blank"
       rel="noopener noreferrer"
+      aria-label="添付画像を開く"
       style={{
         display: 'inline-block',
         maxWidth: 360,
