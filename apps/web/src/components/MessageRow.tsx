@@ -18,11 +18,19 @@ function labelForeground(hex: string): string {
 
 function ImageItem({ src }: { src: string }) {
   const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
+  let safeSrc: string;
+  try {
+    const u = new URL(src, window.location.origin);
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return null;
+    safeSrc = u.toString();
+  } catch {
+    return null;
+  }
   if (status === 'error') return null;
   const isLoaded = status === 'loaded';
   return (
     <a
-      href={src}
+      href={safeSrc}
       target="_blank"
       rel="noopener noreferrer"
       aria-label="添付画像を開く"
@@ -34,7 +42,7 @@ function ImageItem({ src }: { src: string }) {
       }}
     >
       <img
-        src={src}
+        src={safeSrc}
         alt=""
         onLoad={() => setStatus('loaded')}
         onError={() => setStatus('error')}

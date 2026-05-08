@@ -140,11 +140,7 @@ function send(res: ServerResponse, status: number, body: unknown) {
 const GITHUB_IMAGE_FETCH_TIMEOUT_MS = 15_000;
 
 function isAllowedGitHubHost(hostname: string): boolean {
-  return (
-    hostname === 'github.com' ||
-    hostname === 'githubusercontent.com' ||
-    hostname.endsWith('.githubusercontent.com')
-  );
+  return hostname === 'github.com' || hostname.endsWith('.githubusercontent.com');
 }
 
 async function streamGitHubImage(res: ServerResponse, raw: string) {
