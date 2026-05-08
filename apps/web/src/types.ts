@@ -83,6 +83,8 @@ export interface ClockData {
   now: number;
 }
 
+export const WEEKDAYS_JP = ['日', '月', '火', '水', '木', '金', '土'] as const;
+
 export type WidgetData =
   | WeatherData
   | StoreRatingData

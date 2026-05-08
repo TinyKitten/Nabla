@@ -4,7 +4,7 @@ import { fetchStoreRating, getCachedStoreRating } from '../data/storeRating';
 import { fetchFeedback, getCachedFeedback } from '../data/feedback';
 import { fetchPerformance, getCachedPerformance } from '../data/performance';
 import { addLocalTask, fetchTasks, getCachedTasks } from '../data/tasks';
-import type { FeedbackEntry, Message, ToolCall, WidgetType } from '../types';
+import { WEEKDAYS_JP, type FeedbackEntry, type Message, type ToolCall, type WidgetType } from '../types';
 
 interface QuickReply {
   tools: ToolCall[];
@@ -64,7 +64,7 @@ async function clockReply(): Promise<string> {
   const now = new Date();
   const hh = String(now.getHours()).padStart(2, '0');
   const mm = String(now.getMinutes()).padStart(2, '0');
-  const wd = ['日', '月', '火', '水', '木', '金', '土'][now.getDay()];
+  const wd = WEEKDAYS_JP[now.getDay()];
   return `現在は **${hh}:${mm}**、${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日 (${wd}) です。`;
 }
 

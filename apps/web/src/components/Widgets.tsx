@@ -12,21 +12,22 @@ import { fetchStoreRating } from '../data/storeRating';
 import { fetchTasks, toggleTaskDone, TASKS_CHANGED_EVENT } from '../data/tasks';
 import { fetchFeedback } from '../data/feedback';
 import { fetchPerformance } from '../data/performance';
-import type {
-  ClockData,
-  DragHandleProps,
-  FeedbackData,
-  FeedbackEntry,
-  FeedbackSource,
-  HourlyForecast,
-  PerformanceData,
-  StoreRatingData,
-  TasksData,
-  WeatherData,
-  WidgetData,
-  WidgetItem,
-  WidgetSize,
-  WidgetType,
+import {
+  WEEKDAYS_JP,
+  type ClockData,
+  type DragHandleProps,
+  type FeedbackData,
+  type FeedbackEntry,
+  type FeedbackSource,
+  type HourlyForecast,
+  type PerformanceData,
+  type StoreRatingData,
+  type TasksData,
+  type WeatherData,
+  type WidgetData,
+  type WidgetItem,
+  type WidgetSize,
+  type WidgetType,
 } from '../types';
 
 async function fetchClock(): Promise<ClockData> {
@@ -1313,8 +1314,6 @@ function TasksWidget({ size, data }: { size: WidgetSize; data: TasksData | null 
     </div>
   );
 }
-
-const WEEKDAYS_JP = ['日', '月', '火', '水', '木', '金', '土'];
 
 function useNow(intervalMs = 1000) {
   const [now, setNow] = useState(() => new Date());
