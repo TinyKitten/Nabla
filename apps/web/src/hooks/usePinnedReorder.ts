@@ -1,7 +1,11 @@
 import { type DragEvent, useState } from 'react';
-import type { WidgetItem } from '../types';
+import type { WidgetItem, WidgetType } from '../types';
 
 export const PINNED_DND_MIME = 'application/x-pinned-id';
+export const GRID_DND_MIME = 'application/x-widget-id';
+export const INLINE_DND_MIME = 'application/x-inline-type';
+
+export type AcceptState = false | true | 'blocked';
 
 export function reorderPinned(
   items: WidgetItem[],
@@ -22,11 +26,20 @@ interface Options {
   items: WidgetItem[];
   setItems: (next: WidgetItem[]) => void;
   computeIdx: (e: DragEvent, container: Element) => number;
+  onAcceptFromGrid?: (id: string, beforeIdx: number) => void;
+  onAcceptInline?: (type: WidgetType, beforeIdx: number) => void;
 }
 
-export function usePinnedReorder({ items, setItems, computeIdx }: Options) {
+export function usePinnedReorder({
+  items,
+  setItems,
+  computeIdx,
+  onAcceptFromGrid,
+  onAcceptInline,
+}: Options) {
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropIdx, setDropIdx] = useState<number | null>(null);
+  const [acceptingExternal, setAcceptingExternal] = useState<AcceptState>(false);
 
   const dragHandleProps = (id: string) => ({
     draggable: true,
@@ -43,23 +56,63 @@ export function usePinnedReorder({ items, setItems, computeIdx }: Options) {
 
   const containerProps = {
     onDragOver: (e: DragEvent<HTMLElement>) => {
-      if (!e.dataTransfer.types.includes(PINNED_DND_MIME)) return;
+      const types = e.dataTransfer.types;
+      const fromGrid = !!onAcceptFromGrid && types.includes(GRID_DND_MIME);
+      const fromPin = types.includes(PINNED_DND_MIME);
+      const fromInline = !!onAcceptInline && types.includes(INLINE_DND_MIME);
+      if (!fromGrid && !fromPin && !fromInline) return;
+      const pinnedTypes = items.map((w) => w.type);
+      let blocked = false;
+      if (fromGrid) {
+        const t = window.__draggingGridWidgetType;
+        if (!t || pinnedTypes.includes(t)) blocked = true;
+      }
+      if (fromInline) {
+        const t = window.__draggingInlineWidgetType;
+        if (!t || pinnedTypes.includes(t)) blocked = true;
+      }
       e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
+      if (blocked) {
+        e.dataTransfer.dropEffect = 'none';
+        setDropIdx(null);
+        setAcceptingExternal('blocked');
+        return;
+      }
+      e.dataTransfer.dropEffect = fromInline ? 'copy' : 'move';
       setDropIdx(computeIdx(e, e.currentTarget));
+      if (fromGrid || fromInline) setAcceptingExternal(true);
     },
     onDrop: (e: DragEvent<HTMLElement>) => {
-      const fromId = e.dataTransfer.getData(PINNED_DND_MIME);
-      if (!fromId) return;
-      e.preventDefault();
-      const next = reorderPinned(items, fromId, dropIdx);
-      if (next) setItems(next);
+      const gridId = onAcceptFromGrid ? e.dataTransfer.getData(GRID_DND_MIME) : '';
+      const pinId = e.dataTransfer.getData(PINNED_DND_MIME);
+      const inlineType = (
+        onAcceptInline ? e.dataTransfer.getData(INLINE_DND_MIME) : ''
+      ) as WidgetType | '';
+      const pinnedTypes = items.map((w) => w.type);
+      if (gridId && onAcceptFromGrid) {
+        e.preventDefault();
+        const t = window.__draggingGridWidgetType;
+        if (t && !pinnedTypes.includes(t)) {
+          onAcceptFromGrid(gridId, dropIdx == null ? items.length : dropIdx);
+        }
+      } else if (pinId) {
+        e.preventDefault();
+        const next = reorderPinned(items, pinId, dropIdx);
+        if (next) setItems(next);
+      } else if (inlineType && onAcceptInline) {
+        e.preventDefault();
+        if (!pinnedTypes.includes(inlineType)) {
+          onAcceptInline(inlineType, dropIdx == null ? items.length : dropIdx);
+        }
+      }
       setDraggingId(null);
       setDropIdx(null);
+      setAcceptingExternal(false);
     },
     onDragLeave: (e: DragEvent<HTMLElement>) => {
       if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
         setDropIdx(null);
+        setAcceptingExternal(false);
       }
     },
   };
@@ -69,6 +122,7 @@ export function usePinnedReorder({ items, setItems, computeIdx }: Options) {
     setDraggingId,
     dropIdx,
     setDropIdx,
+    acceptingExternal,
     dragHandleProps,
     containerProps,
   };

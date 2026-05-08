@@ -17,16 +17,28 @@ function computeIdxFromGrid(e: DragEvent, container: Element) {
 }
 
 export function Dashboard() {
-  const { pinned, setPinned, isMobile } = useOutletContext<ShellContext>();
-  const { draggingId, dropIdx, dragHandleProps, containerProps } = usePinnedReorder({
-    items: pinned,
-    setItems: setPinned,
-    computeIdx: computeIdxFromGrid,
-  });
+  const { pinned, setPinned, pinWidget, isMobile } = useOutletContext<ShellContext>();
+  const { draggingId, dropIdx, acceptingExternal, dragHandleProps, containerProps } =
+    usePinnedReorder({
+      items: pinned,
+      setItems: setPinned,
+      computeIdx: computeIdxFromGrid,
+      onAcceptFromGrid: pinWidget,
+    });
+
+  const tintBg =
+    acceptingExternal === 'blocked'
+      ? 'color-mix(in oklab, #e63946 5%, transparent)'
+      : acceptingExternal
+      ? 'color-mix(in oklab, var(--accent) 6%, transparent)'
+      : 'transparent';
 
   if (pinned.length === 0) {
+    const blocked = acceptingExternal === 'blocked';
+    const accenting = acceptingExternal === true;
     return (
       <div
+        {...containerProps}
         className="jp-text"
         style={{
           flex: 1,
@@ -35,15 +47,27 @@ export function Dashboard() {
           alignItems: 'center',
           justifyContent: 'center',
           gap: 8,
-          color: 'var(--ink-3)',
+          color: blocked ? '#e63946' : accenting ? 'var(--accent)' : 'var(--ink-3)',
           padding: 24,
           textAlign: 'center',
+          background: tintBg,
+          transition: 'background 0.15s, color 0.15s',
         }}
       >
-        <Icon name="pin" size={22} style={{ color: 'var(--ink-4)' }} />
-        <div style={{ fontSize: 13, fontWeight: 600 }}>ピン留めしたウィジェットがありません</div>
+        <Icon
+          name="pin"
+          size={22}
+          style={{ color: blocked ? '#e63946' : accenting ? 'var(--accent)' : 'var(--ink-4)' }}
+        />
+        <div style={{ fontSize: 13, fontWeight: 600 }}>
+          {blocked
+            ? 'すでにピン留め済み'
+            : accenting
+            ? 'ここにドロップしてピン留め'
+            : 'ピン留めしたウィジェットがありません'}
+        </div>
         <div style={{ fontSize: 12, color: 'var(--ink-4)', maxWidth: 320 }}>
-          右パネルのウィジェットをピン留めすると、ここに表示されます。
+          右パネルのウィジェットをここにドラッグするか、ピン留めすると表示されます。
         </div>
       </div>
     );
@@ -51,11 +75,16 @@ export function Dashboard() {
 
   return (
     <div
+      {...containerProps}
       className="scroll-area"
-      style={{ flex: 1, padding: isMobile ? '20px 14px 24px' : '24px 28px 28px' }}
+      style={{
+        flex: 1,
+        padding: isMobile ? '20px 14px 24px' : '24px 28px 28px',
+        background: tintBg,
+        transition: 'background 0.15s',
+      }}
     >
       <div
-        {...containerProps}
         style={{
           display: 'flex',
           flexWrap: 'wrap',
@@ -66,7 +95,8 @@ export function Dashboard() {
         {pinned.map((w, i) => {
           const isDragging = draggingId === w.id;
           const showInsertBefore =
-            dropIdx === i && draggingId !== null && draggingId !== w.id;
+            dropIdx === i &&
+            (acceptingExternal === true || (draggingId !== null && draggingId !== w.id));
           return (
             <Fragment key={w.id}>
               {showInsertBefore && <DropIndicator />}
@@ -80,13 +110,17 @@ export function Dashboard() {
                 <Widget
                   widget={{ ...w, size: 'md' }}
                   isPinned
+                  onRemove={() => setPinned((p) => p.filter((x) => x.id !== w.id))}
+                  onUnpin={() => setPinned((p) => p.filter((x) => x.id !== w.id))}
                   dragHandleProps={dragHandleProps(w.id)}
                 />
               </div>
             </Fragment>
           );
         })}
-        {dropIdx === pinned.length && draggingId !== null && <DropIndicator />}
+        {dropIdx === pinned.length && (acceptingExternal === true || draggingId !== null) && (
+          <DropIndicator />
+        )}
       </div>
     </div>
   );

@@ -94,9 +94,11 @@ export function getCachedTasks(maxAgeMs = CACHE_TTL_MS): TasksData | null {
   return cached.data;
 }
 
-export async function fetchTasks(): Promise<TasksData> {
-  const fresh = getCachedTasks();
-  if (fresh) return fresh;
+export async function fetchTasks(opts?: { force?: boolean }): Promise<TasksData> {
+  if (!opts?.force) {
+    const fresh = getCachedTasks();
+    if (fresh) return fresh;
+  }
   if (inFlight) return inFlight;
   inFlight = (async () => {
     try {
@@ -119,9 +121,13 @@ export async function fetchTasks(): Promise<TasksData> {
         clearTimeout(timer);
       }
       setToolConnected('linear', linearConnected);
-      const data = buildSnapshot(linear, readState());
-      if (fetchOk) cached = { data, at: Date.now() };
-      return data;
+      if (fetchOk) {
+        const data = buildSnapshot(linear, readState());
+        cached = { data, at: Date.now() };
+        return data;
+      }
+      if (cached) return cached.data;
+      throw new Error('tasks fetch failed and no cached snapshot available');
     } finally {
       inFlight = null;
     }

@@ -17,9 +17,11 @@ export function getCachedPerformance(maxAgeMs = CACHE_TTL_MS): PerformanceData |
   return cached.data;
 }
 
-export async function fetchPerformance(): Promise<PerformanceData> {
-  const fresh = getCachedPerformance();
-  if (fresh) return fresh;
+export async function fetchPerformance(opts?: { force?: boolean }): Promise<PerformanceData> {
+  if (!opts?.force) {
+    const fresh = getCachedPerformance();
+    if (fresh) return fresh;
+  }
   if (inFlight) return inFlight;
   inFlight = (async () => {
     const ctrl = new AbortController();

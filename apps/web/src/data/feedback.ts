@@ -64,9 +64,11 @@ export function getCachedFeedback(maxAgeMs = CACHE_TTL_MS): FeedbackData | null 
   return cached.data;
 }
 
-export async function fetchFeedback(): Promise<FeedbackData> {
-  const fresh = getCachedFeedback();
-  if (fresh) return fresh;
+export async function fetchFeedback(opts?: { force?: boolean }): Promise<FeedbackData> {
+  if (!opts?.force) {
+    const fresh = getCachedFeedback();
+    if (fresh) return fresh;
+  }
   if (inFlight) return inFlight;
   inFlight = (async () => {
     const ctrl = new AbortController();

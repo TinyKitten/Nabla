@@ -17,9 +17,11 @@ export function getCachedStoreRating(maxAgeMs = CACHE_TTL_MS): StoreRatingData |
   return cached.data;
 }
 
-export async function fetchStoreRating(): Promise<StoreRatingData> {
-  const fresh = getCachedStoreRating();
-  if (fresh) return fresh;
+export async function fetchStoreRating(opts?: { force?: boolean }): Promise<StoreRatingData> {
+  if (!opts?.force) {
+    const fresh = getCachedStoreRating();
+    if (fresh) return fresh;
+  }
   if (inFlight) return inFlight;
   inFlight = (async () => {
     const ctrl = new AbortController();

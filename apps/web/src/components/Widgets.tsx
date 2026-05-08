@@ -31,7 +31,7 @@ import type {
 interface WidgetDef {
   title: string;
   icon: string;
-  fetch: () => Promise<WidgetData>;
+  fetch: (opts?: { force?: boolean }) => Promise<WidgetData>;
 }
 
 export const WIDGET_DEFS: Record<WidgetType, WidgetDef> = {
@@ -118,17 +118,20 @@ export function useWidget(type: WidgetType, intervalSec: number) {
   const [data, setData] = useState<WidgetData | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
 
-  const refresh = useCallback(async () => {
-    const def = WIDGET_DEFS[type];
-    if (!def) return;
-    try {
-      const d = await def.fetch();
-      setData(d);
-      setLastRefresh(new Date());
-    } catch (err) {
-      console.warn(`[widget:${type}] fetch failed`, err);
-    }
-  }, [type]);
+  const refresh = useCallback(
+    async (opts?: { force?: boolean }) => {
+      const def = WIDGET_DEFS[type];
+      if (!def) return;
+      try {
+        const d = await def.fetch(opts);
+        setData(d);
+        setLastRefresh(new Date());
+      } catch (err) {
+        console.warn(`[widget:${type}] fetch failed`, err);
+      }
+    },
+    [type],
+  );
 
   useEffect(() => {
     refresh();
@@ -1351,7 +1354,7 @@ export function Widget({
       onOpen={onOpen}
       onRemove={onRemove}
       onRefresh={() => {
-        refresh();
+        refresh({ force: true });
         if (onRefresh) onRefresh();
       }}
       onPin={onPin}
