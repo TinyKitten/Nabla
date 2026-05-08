@@ -13,6 +13,7 @@ import { fetchTasks, toggleTaskDone, TASKS_CHANGED_EVENT } from '../data/tasks';
 import { fetchFeedback } from '../data/feedback';
 import { fetchPerformance } from '../data/performance';
 import type {
+  ClockData,
   DragHandleProps,
   FeedbackData,
   FeedbackEntry,
@@ -27,6 +28,10 @@ import type {
   WidgetSize,
   WidgetType,
 } from '../types';
+
+async function fetchClock(): Promise<ClockData> {
+  return { now: Date.now() };
+}
 
 interface WidgetDef {
   title: string;
@@ -59,6 +64,11 @@ export const WIDGET_DEFS: Record<WidgetType, WidgetDef> = {
     title: '今日のタスク',
     icon: 'check-square',
     fetch: fetchTasks,
+  },
+  clock: {
+    title: '日時',
+    icon: 'clock',
+    fetch: fetchClock,
   },
 };
 
@@ -1304,6 +1314,97 @@ function TasksWidget({ size, data }: { size: WidgetSize; data: TasksData | null 
   );
 }
 
+const WEEKDAYS_JP = ['日', '月', '火', '水', '木', '金', '土'];
+
+function useNow(intervalMs = 1000) {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), intervalMs);
+    return () => window.clearInterval(id);
+  }, [intervalMs]);
+  return now;
+}
+
+function ClockWidget({ size }: { size: WidgetSize }) {
+  const now = useNow(1000);
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const wd = WEEKDAYS_JP[now.getDay()];
+  const m = now.getMonth() + 1;
+  const d = now.getDate();
+  const y = now.getFullYear();
+
+  if (size === 'sm') {
+    return (
+      <>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+          <span
+            style={{
+              fontSize: 28,
+              fontWeight: 500,
+              fontVariantNumeric: 'tabular-nums',
+              letterSpacing: '-0.04em',
+              lineHeight: 1,
+            }}
+          >
+            {hh}:{mm}
+          </span>
+        </div>
+        <div className="jp-text" style={{ fontSize: 10, color: 'var(--ink-3)' }}>
+          {m}/{d} ({wd})
+        </div>
+      </>
+    );
+  }
+  if (size === 'md') {
+    return (
+      <>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+          <span
+            style={{
+              fontSize: 38,
+              fontWeight: 500,
+              fontVariantNumeric: 'tabular-nums',
+              letterSpacing: '-0.04em',
+              lineHeight: 1,
+            }}
+          >
+            {hh}:{mm}
+          </span>
+        </div>
+        <div className="jp-text" style={{ fontSize: 11, color: 'var(--ink-4)', marginTop: 4 }}>
+          {y}年{m}月{d}日 ({wd})
+        </div>
+        <div style={{ flex: 1 }} />
+      </>
+    );
+  }
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+        <span
+          style={{
+            fontSize: 56,
+            fontWeight: 500,
+            fontVariantNumeric: 'tabular-nums',
+            letterSpacing: '-0.04em',
+            lineHeight: 1,
+          }}
+        >
+          {hh}:{mm}
+        </span>
+      </div>
+      <div className="jp-text" style={{ fontSize: 13, color: 'var(--ink-2)', marginTop: 8 }}>
+        {y}年{m}月{d}日
+      </div>
+      <div className="jp-text" style={{ fontSize: 11, color: 'var(--ink-4)', marginTop: 2 }}>
+        {wd}曜日
+      </div>
+      <div style={{ flex: 1 }} />
+    </>
+  );
+}
+
 interface WidgetProps {
   widget: WidgetItem;
   onOpen?: () => void;
@@ -1342,6 +1443,8 @@ export function Widget({
         return <PerfWidget size={widget.size} data={data as PerformanceData | null} />;
       case 'tasks':
         return <TasksWidget size={widget.size} data={data as TasksData | null} />;
+      case 'clock':
+        return <ClockWidget size={widget.size} />;
     }
   };
 

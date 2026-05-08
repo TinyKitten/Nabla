@@ -30,6 +30,7 @@ export type IconName =
   | 'check'
   | 'star'
   | 'history'
+  | 'clock'
   | 'cloud-sun'
   | 'star-line'
   | 'message-dots'
@@ -125,6 +126,8 @@ export function Icon({ name, size = 18, stroke = 1.6, style }: IconProps) {
       return (<svg viewBox="0 0 24 24" style={s}><path d="M12 3l2.7 6.3L21 10l-5 4.6 1.5 6.4L12 17.8 6.5 21 8 14.6 3 10l6.3-.7z" /></svg>);
     case 'history':
       return (<svg viewBox="0 0 24 24" style={s}><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2" /></svg>);
+    case 'clock':
+      return (<svg viewBox="0 0 24 24" style={s}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>);
     case 'cloud-sun':
       return (<svg viewBox="0 0 24 24" style={s}><circle cx="8" cy="8" r="3" /><path d="M8 2v1M2 8h1M3.5 3.5l.7.7M12.5 3.5l-.7.7" /><path d="M16 14a4 4 0 0 0-7.6-1.5A3.5 3.5 0 1 0 8 19h8a3 3 0 1 0 0-5z" /></svg>);
     case 'star-line':

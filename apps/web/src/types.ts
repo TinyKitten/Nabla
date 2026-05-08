@@ -1,6 +1,6 @@
 export type WidgetSize = 'sm' | 'md' | 'lg';
 
-export type WidgetType = 'weather' | 'storeRating' | 'feedback' | 'performance' | 'tasks';
+export type WidgetType = 'weather' | 'storeRating' | 'feedback' | 'performance' | 'tasks' | 'clock';
 
 export interface WidgetItem {
   id: string;
@@ -79,12 +79,17 @@ export interface TasksData {
   items: TaskEntry[];
 }
 
+export interface ClockData {
+  now: number;
+}
+
 export type WidgetData =
   | WeatherData
   | StoreRatingData
   | FeedbackData
   | PerformanceData
-  | TasksData;
+  | TasksData
+  | ClockData;
 
 export interface ToolCall {
   name: string;

@@ -60,6 +60,14 @@ async function perfReply(): Promise<string> {
   }
 }
 
+async function clockReply(): Promise<string> {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const wd = ['日', '月', '火', '水', '木', '金', '土'][now.getDay()];
+  return `現在は **${hh}:${mm}**、${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日 (${wd}) です。`;
+}
+
 async function feedbackReply(): Promise<string> {
   try {
     const f = getCachedFeedback() ?? (await fetchFeedback());
@@ -109,9 +117,14 @@ export const QUICK_REPLIES: Record<string, QuickReply> = {
     text: tasksReply,
     widget: 'tasks',
   },
+  clock: {
+    tools: [],
+    text: clockReply,
+    widget: 'clock',
+  },
   addWidget: {
     tools: [],
-    text: 'どんなウィジェットを追加しますか？よく使われるのは以下です:\n\n- **天気** — 現在地の気温と天気\n- **App Store 評価** — App Store の星評価とトレンド\n- **新着レビュー** — 直近のユーザーレビュー\n- **パフォーマンス** — クラッシュフリー率と起動時間\n- **タスク** — 進行中のタスク一覧\n\n名前を教えていただくか、「天気を追加して」のようにお伝えください。',
+    text: 'どんなウィジェットを追加しますか？よく使われるのは以下です:\n\n- **天気** — 現在地の気温と天気\n- **App Store 評価** — App Store の星評価とトレンド\n- **新着レビュー** — 直近のユーザーレビュー\n- **パフォーマンス** — クラッシュフリー率と起動時間\n- **タスク** — 進行中のタスク一覧\n- **日時** — 現在の日付と時刻\n\n名前を教えていただくか、「天気を追加して」のようにお伝えください。',
   },
 };
 
@@ -123,6 +136,7 @@ function detectIntent(text: string): keyof typeof QUICK_REPLIES | null {
   if (/フィードバック|レビュー|feedback|review|声/.test(t)) return 'feedback';
   if (/パフォーマンス|クラッシュ|起動|perf|crash/.test(t)) return 'perf';
   if (/タスク|todo|task/.test(t)) return 'tasks';
+  if (/時間|時刻|日時|日付|今何時|clock|time|date/.test(t)) return 'clock';
   return null;
 }
 

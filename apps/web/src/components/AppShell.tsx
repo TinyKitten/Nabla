@@ -21,6 +21,7 @@ const VALID_WIDGET_TYPES: ReadonlySet<WidgetType> = new Set([
   'feedback',
   'performance',
   'tasks',
+  'clock',
 ]);
 const VALID_WIDGET_SIZES: ReadonlySet<WidgetSize> = new Set(['sm', 'md', 'lg']);
 
@@ -77,6 +78,7 @@ const WIDGETS_INITIAL: WidgetItem[] = [
   { id: 'd2', type: 'performance', size: 'md', refreshInterval: 1800 },
   { id: 'd3', type: 'feedback', size: 'lg', refreshInterval: 600 },
   { id: 'd4', type: 'tasks', size: 'md', refreshInterval: 0 },
+  { id: 'd5', type: 'clock', size: 'sm', refreshInterval: 0 },
 ];
 
 const INITIAL_MESSAGES: Message[] = [
