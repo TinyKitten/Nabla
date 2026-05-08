@@ -171,7 +171,12 @@ interface MarkdownProps {
 export function Markdown({ text, trailing }: MarkdownProps) {
   return (
     <div className="markdown-body">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml components={COMPONENTS}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        skipHtml
+        disallowedElements={['img']}
+        components={COMPONENTS}
+      >
         {text}
       </ReactMarkdown>
       {trailing}

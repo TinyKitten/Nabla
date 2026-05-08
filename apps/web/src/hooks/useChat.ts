@@ -81,14 +81,14 @@ export function useChat(initialMessages: Message[] = []) {
 
       const taskAddText = detectTaskAdd(text);
 
-      try {
-        if (taskAddText) {
-          const tools: ToolCall[] = [
-            { name: 'add_task', label: 'タスクを追加中', icon: 'check-square', status: 'running' },
-          ];
-          setMessages((prev) =>
-            prev.map((m) => (m.id === aiId ? { ...m, tools: [...tools] } : m)),
-          );
+      if (taskAddText) {
+        const tools: ToolCall[] = [
+          { name: 'add_task', label: 'タスクを追加中', icon: 'check-square', status: 'running' },
+        ];
+        setMessages((prev) =>
+          prev.map((m) => (m.id === aiId ? { ...m, tools: [...tools] } : m)),
+        );
+        try {
           await new Promise((r) => setTimeout(r, 250));
           if (streamRef.current !== aiId) return;
           const added = addLocalTask(taskAddText);
@@ -103,11 +103,30 @@ export function useChat(initialMessages: Message[] = []) {
                 : m,
             ),
           );
+        } catch {
+          if (streamRef.current !== aiId) return;
+          tools[0].status = 'done';
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === aiId
+                ? {
+                    ...m,
+                    text: 'ローカルのタスク追加に失敗しました。ブラウザの保存領域を確認してください。',
+                    tools,
+                    streaming: false,
+                    actions: true,
+                  }
+                : m,
+            ),
+          );
+        } finally {
           setStreaming(false);
           streamRef.current = null;
-          return;
         }
+        return;
+      }
 
+      try {
         const widget = detectWidget(text);
         const tools: ToolCall[] = [
           { name: 'openclaw', label: '考え中', icon: 'sparkle', status: 'running' },
@@ -186,7 +205,19 @@ export function useChat(initialMessages: Message[] = []) {
     abortRef.current = null;
     setStreaming(false);
     setMessages((prev) =>
-      prev.map((m) => (m.streaming ? { ...m, streaming: false, actions: true } : m)),
+      prev.map((m) =>
+        m.streaming
+          ? {
+              ...m,
+              streaming: false,
+              actions: true,
+              tools:
+                m.tools?.map((t) =>
+                  t.status === 'running' ? { ...t, status: 'done' } : t,
+                ) ?? [],
+            }
+          : m,
+      ),
     );
   }, []);
 
