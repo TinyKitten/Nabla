@@ -139,9 +139,7 @@ export function AppShell() {
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
-  const [panelOpen, setPanelOpen] = useState(() =>
-    typeof window !== 'undefined' ? window.innerWidth >= 720 : true,
-  );
+  const [panelOpen, setPanelOpen] = useState(false);
 
   const unpinWidget = (id: string) => {
     const w = pinned.find((x) => x.id === id);
