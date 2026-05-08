@@ -22,13 +22,11 @@ function reviewToEntry(
   };
 }
 
-export function buildFeedback(
-  github: GitHubFeedbackSnapshot | null,
+export function buildReviews(
   appStore: AppStoreSnapshot | null,
   googlePlay: GooglePlaySnapshot | null,
-): { items: FeedbackEntrySnapshot[]; unread: number; hasMore: boolean } {
+): { items: FeedbackEntrySnapshot[] } {
   const items: FeedbackEntrySnapshot[] = [];
-  if (github) items.push(...github.items);
   if (appStore) {
     for (const r of appStore.textReviews) {
       const e = reviewToEntry(r, 'appStore');
@@ -41,6 +39,14 @@ export function buildFeedback(
       if (e) items.push(e);
     }
   }
+  items.sort((a, b) => b.createdAt - a.createdAt);
+  return { items: items.slice(0, MAX_ITEMS) };
+}
+
+export function buildFeedback(
+  github: GitHubFeedbackSnapshot | null,
+): { items: FeedbackEntrySnapshot[]; unread: number; hasMore: boolean } {
+  const items: FeedbackEntrySnapshot[] = github ? [...github.items] : [];
   items.sort((a, b) => b.createdAt - a.createdAt);
   return {
     items: items.slice(0, MAX_ITEMS),

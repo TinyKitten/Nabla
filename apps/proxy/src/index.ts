@@ -3,13 +3,14 @@ import { getAppStoreSnapshot } from './appStore.js';
 import { getGooglePlaySnapshot } from './googlePlay.js';
 import { getGitHubFeedbackSnapshot } from './github.js';
 import { aggregate } from './aggregate.js';
-import { buildFeedback } from './feedback.js';
+import { buildFeedback, buildReviews } from './feedback.js';
 import { fetchLinearTasks } from './linear.js';
 import { getSentryPerformanceSnapshot } from './sentry.js';
 import { fetchWeatherSnapshot, isOpenWeatherConfigured } from './weather.js';
 import type {
   FeedbackResponse,
   PerformanceResponse,
+  ReviewsResponse,
   StoreRatingResponse,
   TasksResponse,
   WeatherResponse,
@@ -31,27 +32,34 @@ async function loadStoreRating(): Promise<StoreRatingResponse> {
 }
 
 async function loadFeedback(): Promise<FeedbackResponse> {
-  const [github, appStore, googlePlay] = await Promise.all([
-    getGitHubFeedbackSnapshot().catch((err) => {
-      console.warn('[feedback] GitHub fetch failed:', err);
-      return null;
-    }),
-    getAppStoreSnapshot().catch((err) => {
-      console.warn('[feedback] App Store fetch failed:', err);
-      return null;
-    }),
-    getGooglePlaySnapshot().catch((err) => {
-      console.warn('[feedback] Google Play fetch failed:', err);
-      return null;
-    }),
-  ]);
-  const built = buildFeedback(github, appStore, googlePlay);
+  const github = await getGitHubFeedbackSnapshot().catch((err) => {
+    console.warn('[feedback] GitHub fetch failed:', err);
+    return null;
+  });
+  const built = buildFeedback(github);
   return {
     items: built.items,
     unread: built.unread,
     hasMore: built.hasMore,
+    sources: { github: github?.connected ?? false },
+  };
+}
+
+async function loadReviews(): Promise<ReviewsResponse> {
+  const [appStore, googlePlay] = await Promise.all([
+    getAppStoreSnapshot().catch((err) => {
+      console.warn('[reviews] App Store fetch failed:', err);
+      return null;
+    }),
+    getGooglePlaySnapshot().catch((err) => {
+      console.warn('[reviews] Google Play fetch failed:', err);
+      return null;
+    }),
+  ]);
+  const built = buildReviews(appStore, googlePlay);
+  return {
+    items: built.items,
     sources: {
-      github: github?.connected ?? false,
       appStore: appStore !== null,
       googlePlay: googlePlay !== null,
     },
@@ -239,10 +247,20 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   if (req.url === '/api/feedback') {
     try {
       const data = await loadFeedback();
-      const anySource = data.sources.github || data.sources.appStore || data.sources.googlePlay;
-      send(res, anySource ? 200 : 503, data);
+      send(res, data.sources.github ? 200 : 503, data);
     } catch (err) {
       console.error('[feedback]', err);
+      send(res, 503, { error: err instanceof Error ? err.message : 'unknown' });
+    }
+    return;
+  }
+  if (req.url === '/api/reviews') {
+    try {
+      const data = await loadReviews();
+      const anySource = data.sources.appStore || data.sources.googlePlay;
+      send(res, anySource ? 200 : 503, data);
+    } catch (err) {
+      console.error('[reviews]', err);
       send(res, 503, { error: err instanceof Error ? err.message : 'unknown' });
     }
     return;

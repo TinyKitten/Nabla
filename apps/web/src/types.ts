@@ -1,6 +1,13 @@
 export type WidgetSize = 'sm' | 'md' | 'lg';
 
-export type WidgetType = 'weather' | 'storeRating' | 'feedback' | 'performance' | 'tasks' | 'clock';
+export type WidgetType =
+  | 'weather'
+  | 'storeRating'
+  | 'reviews'
+  | 'feedback'
+  | 'performance'
+  | 'tasks'
+  | 'clock';
 
 export interface WidgetItem {
   id: string;
@@ -56,6 +63,10 @@ export interface FeedbackData {
   hasMore?: boolean;
 }
 
+export interface ReviewsData {
+  items: FeedbackEntry[];
+}
+
 export interface PerformanceData {
   crashFree: number;
   delta: string;
@@ -89,6 +100,7 @@ export type WidgetData =
   | WeatherData
   | StoreRatingData
   | FeedbackData
+  | ReviewsData
   | PerformanceData
   | TasksData
   | ClockData;

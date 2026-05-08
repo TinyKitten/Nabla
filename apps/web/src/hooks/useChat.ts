@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { fetchWeather, getCachedWeather } from '../data/weather';
 import { fetchStoreRating, getCachedStoreRating } from '../data/storeRating';
 import { fetchFeedback, getCachedFeedback } from '../data/feedback';
+import { fetchReviews, getCachedReviews } from '../data/reviews';
 import { fetchPerformance, getCachedPerformance } from '../data/performance';
 import { addLocalTask, fetchTasks, getCachedTasks } from '../data/tasks';
 import { WEEKDAYS_JP, type FeedbackEntry, type Message, type ToolCall, type WidgetType } from '../types';
@@ -68,26 +69,36 @@ async function clockReply(): Promise<string> {
   return `現在は **${hh}:${mm}**、${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日 (${wd}) です。`;
 }
 
+async function reviewsReply(): Promise<string> {
+  try {
+    const r = getCachedReviews() ?? (await fetchReviews());
+    if (r.items.length === 0) {
+      return '新着のレビューはありません。';
+    }
+    const ios = r.items.filter((i) => i.source === 'appStore').length;
+    const android = r.items.filter((i) => i.source === 'googlePlay').length;
+    const samples = r.items.slice(0, 3).map((i) => `「${i.text.slice(0, 40)}」`).join('、');
+    const reviewParts: string[] = [];
+    if (ios) reviewParts.push(`iOS ${ios} 件`);
+    if (android) reviewParts.push(`Android ${android} 件`);
+    const breakdown = reviewParts.join(' / ');
+    return `直近の新着レビューは ${r.items.length} 件です(${breakdown})。${samples} など。`;
+  } catch {
+    return 'レビューを取得できませんでした。App Store Connect / Google Play Console の接続設定を確認してください。';
+  }
+}
+
 async function feedbackReply(): Promise<string> {
   try {
     const f = getCachedFeedback() ?? (await fetchFeedback());
     if (f.items.length === 0) {
-      return '新着のレビューもしくはフィードバックはありません。';
+      return '新着のフィードバックはありません。';
     }
-    const ios = f.items.filter((i) => i.source === 'appStore').length;
-    const android = f.items.filter((i) => i.source === 'googlePlay').length;
-    const issues = f.items.filter((i) => i.source === 'github').length;
-    const samples = f.items.slice(0, 3).map((i) => `「${i.text.slice(0, 40)}」`).join('、');
-    const reviewParts: string[] = [];
-    if (ios) reviewParts.push(`iOS ${ios} 件`);
-    if (android) reviewParts.push(`Android ${android} 件`);
-    const segments: string[] = [];
-    if (reviewParts.length) segments.push(`レビュー ${reviewParts.join(' / ')}`);
-    if (issues) segments.push(`GitHub フィードバック ${issues} 件`);
-    const breakdown = segments.join('、');
-    return `直近の新着は ${f.items.length} 件です(${breakdown})。${samples} など。Issue 化したいものがあれば教えてください。`;
+    const samples = f.items.slice(0, 3).map((i) => `「${i.title ?? i.text.slice(0, 40)}」`).join('、');
+    const moreSuffix = f.hasMore ? '+' : '';
+    return `直近の新着 GitHub フィードバックは ${f.items.length}${moreSuffix} 件です。${samples} など。Issue 化したいものがあれば教えてください。`;
   } catch {
-    return 'レビューもしくはフィードバックを取得できませんでした。App Store Connect / Google Play Console / GitHub の接続設定を確認してください。';
+    return 'フィードバックを取得できませんでした。GitHub の接続設定を確認してください。';
   }
 }
 
@@ -102,8 +113,13 @@ export const QUICK_REPLIES: Record<string, QuickReply> = {
     text: ratingReply,
     widget: 'storeRating',
   },
-  feedback: {
+  reviews: {
     tools: [{ name: 'fetch_reviews', label: 'レビューを取得中', icon: 'history' }],
+    text: reviewsReply,
+    widget: 'reviews',
+  },
+  feedback: {
+    tools: [{ name: 'fetch_feedback', label: 'フィードバックを取得中', icon: 'history' }],
     text: feedbackReply,
     widget: 'feedback',
   },
@@ -124,7 +140,7 @@ export const QUICK_REPLIES: Record<string, QuickReply> = {
   },
   addWidget: {
     tools: [],
-    text: 'どんなウィジェットを追加しますか？よく使われるのは以下です:\n\n- **天気** — 現在地の気温と天気\n- **App Store 評価** — App Store の星評価とトレンド\n- **新着レビュー** — 直近のユーザーレビュー\n- **パフォーマンス** — クラッシュフリー率と起動時間\n- **タスク** — 進行中のタスク一覧\n- **日時** — 現在の日付と時刻\n\n名前を教えていただくか、「天気を追加して」のようにお伝えください。',
+    text: 'どんなウィジェットを追加しますか？よく使われるのは以下です:\n\n- **天気** — 現在地の気温と天気\n- **App Store 評価** — App Store の星評価とトレンド\n- **新着レビュー** — App Store / Google Play の直近レビュー\n- **フィードバック** — GitHub に届いた新着フィードバック\n- **パフォーマンス** — クラッシュフリー率と起動時間\n- **タスク** — 進行中のタスク一覧\n- **日時** — 現在の日付と時刻\n\n名前を教えていただくか、「天気を追加して」のようにお伝えください。',
   },
 };
 
@@ -133,7 +149,8 @@ function detectIntent(text: string): keyof typeof QUICK_REPLIES | null {
   if (/ウィジェットを追加|ウィジェット追加|widget add|add widget/.test(t)) return 'addWidget';
   if (/天気|weather|気温|雨/.test(t)) return 'weather';
   if (/評価|レーティング|星|rating|store/.test(t)) return 'rating';
-  if (/フィードバック|レビュー|feedback|review|声/.test(t)) return 'feedback';
+  if (/フィードバック|github|issue|要望|声/.test(t)) return 'feedback';
+  if (/レビュー|review/.test(t)) return 'reviews';
   if (/パフォーマンス|クラッシュ|起動|perf|crash/.test(t)) return 'perf';
   if (/タスク|todo|task/.test(t)) return 'tasks';
   if (/時間|時刻|日時|日付|今何時/.test(t) || /\b(clock|time|date)\b/.test(t))
