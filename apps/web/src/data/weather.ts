@@ -38,9 +38,11 @@ export function getCachedWeather(maxAgeMs = CACHE_TTL_MS): WeatherData | null {
   return cachedWeather.data;
 }
 
-export async function fetchWeather(): Promise<WeatherData> {
-  const cached = getCachedWeather();
-  if (cached) return cached;
+export async function fetchWeather(opts?: { force?: boolean }): Promise<WeatherData> {
+  if (!opts?.force) {
+    const cached = getCachedWeather();
+    if (cached) return cached;
+  }
   if (inFlight) return inFlight;
   inFlight = (async () => {
     const ctrl = new AbortController();

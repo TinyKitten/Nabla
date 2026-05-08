@@ -94,9 +94,11 @@ export function getCachedTasks(maxAgeMs = CACHE_TTL_MS): TasksData | null {
   return cached.data;
 }
 
-export async function fetchTasks(): Promise<TasksData> {
-  const fresh = getCachedTasks();
-  if (fresh) return fresh;
+export async function fetchTasks(opts?: { force?: boolean }): Promise<TasksData> {
+  if (!opts?.force) {
+    const fresh = getCachedTasks();
+    if (fresh) return fresh;
+  }
   if (inFlight) return inFlight;
   inFlight = (async () => {
     try {
