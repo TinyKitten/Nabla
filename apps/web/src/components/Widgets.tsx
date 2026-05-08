@@ -11,6 +11,7 @@ import { fetchWeather } from '../data/weather';
 import { fetchStoreRating } from '../data/storeRating';
 import { fetchTasks, toggleTaskDone, TASKS_CHANGED_EVENT } from '../data/tasks';
 import { fetchFeedback } from '../data/feedback';
+import { fetchReviews } from '../data/reviews';
 import { fetchPerformance } from '../data/performance';
 import {
   WEEKDAYS_JP,
@@ -21,6 +22,7 @@ import {
   type FeedbackSource,
   type HourlyForecast,
   type PerformanceData,
+  type ReviewsData,
   type StoreRatingData,
   type TasksData,
   type WeatherData,
@@ -51,8 +53,13 @@ export const WIDGET_DEFS: Record<WidgetType, WidgetDef> = {
     icon: 'star-line',
     fetch: fetchStoreRating,
   },
-  feedback: {
+  reviews: {
     title: 'TrainLCD · 新着レビュー',
+    icon: 'message-dots',
+    fetch: fetchReviews,
+  },
+  feedback: {
+    title: 'TrainLCD · フィードバック',
     icon: 'message-dots',
     fetch: fetchFeedback,
   },
@@ -940,30 +947,15 @@ function openFeedbackDetail(entry: FeedbackEntry) {
   window.dispatchEvent(new CustomEvent(FEEDBACK_DETAIL_EVENT, { detail: entry }));
 }
 
-function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData | null }) {
-  if (!data) return <Skeleton size={size} />;
-  if (size === 'sm') {
-    return (
-      <>
-        <div
-          style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-          }}
-        >
-          <span style={{ fontSize: 32, fontWeight: 500 }}>
-            {data.hasMore ? `${data.unread}+` : data.unread}
-          </span>
-          <span className="jp-text" style={{ fontSize: 10, color: 'var(--ink-3)' }}>
-            未読フィードバック
-          </span>
-        </div>
-      </>
-    );
-  }
-  if (data.items.length === 0) {
+interface EntryListProps {
+  size: 'md' | 'lg';
+  items: FeedbackEntry[];
+  emptyText: string;
+  topMoreSuffix?: string;
+}
+
+function FeedbackEntryListView({ size, items, emptyText, topMoreSuffix }: EntryListProps) {
+  if (items.length === 0) {
     return (
       <div
         className="jp-text"
@@ -972,33 +964,16 @@ function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData |
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: 12,
+          fontSize: size === 'md' ? 11 : 12,
           color: 'var(--ink-4)',
         }}
       >
-        レビューもしくはフィードバックはまだありません
+        {emptyText}
       </div>
     );
   }
   if (size === 'md') {
-    const top = data.items[0];
-    if (!top) {
-      return (
-        <div
-          className="jp-text"
-          style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 11,
-            color: 'var(--ink-4)',
-          }}
-        >
-          新着のレビューもしくはフィードバックはありません
-        </div>
-      );
-    }
+    const top = items[0];
     return (
       <div
         data-widget-control
@@ -1068,14 +1043,12 @@ function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData |
         <div style={{ flex: 1 }} />
         <div className="jp-text" style={{ fontSize: 10, color: 'var(--ink-4)' }}>
           — {top.author}
-          {data.items.length > 1
-            ? ` · 他 ${data.items.length - 1}${data.hasMore ? '+' : ''} 件`
-            : ''}
+          {items.length > 1 ? ` · 他 ${items.length - 1}${topMoreSuffix ?? ''} 件` : ''}
         </div>
       </div>
     );
   }
-  const visibleItems = data.items.slice(0, 5);
+  const visibleItems = items.slice(0, 5);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, overflow: 'hidden' }}>
       {visibleItems.map((it, i) => (
@@ -1152,6 +1125,69 @@ function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData |
         </div>
       ))}
     </div>
+  );
+}
+
+function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData | null }) {
+  if (!data) return <Skeleton size={size} />;
+  if (size === 'sm') {
+    return (
+      <>
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+          }}
+        >
+          <span style={{ fontSize: 32, fontWeight: 500 }}>
+            {data.hasMore ? `${data.unread}+` : data.unread}
+          </span>
+          <span className="jp-text" style={{ fontSize: 10, color: 'var(--ink-3)' }}>
+            未読フィードバック
+          </span>
+        </div>
+      </>
+    );
+  }
+  return (
+    <FeedbackEntryListView
+      size={size}
+      items={data.items}
+      emptyText="新着のフィードバックはありません"
+      topMoreSuffix={data.hasMore ? '+' : ''}
+    />
+  );
+}
+
+function ReviewsWidget({ size, data }: { size: WidgetSize; data: ReviewsData | null }) {
+  if (!data) return <Skeleton size={size} />;
+  if (size === 'sm') {
+    return (
+      <>
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+          }}
+        >
+          <span style={{ fontSize: 32, fontWeight: 500 }}>{data.items.length}</span>
+          <span className="jp-text" style={{ fontSize: 10, color: 'var(--ink-3)' }}>
+            新着レビュー
+          </span>
+        </div>
+      </>
+    );
+  }
+  return (
+    <FeedbackEntryListView
+      size={size}
+      items={data.items}
+      emptyText="新着のレビューはありません"
+    />
   );
 }
 
@@ -1436,6 +1472,8 @@ export function Widget({
         return <WeatherWidget size={widget.size} data={data as WeatherData | null} />;
       case 'storeRating':
         return <StoreRatingWidget size={widget.size} data={data as StoreRatingData | null} />;
+      case 'reviews':
+        return <ReviewsWidget size={widget.size} data={data as ReviewsData | null} />;
       case 'feedback':
         return <FeedbackWidget size={widget.size} data={data as FeedbackData | null} />;
       case 'performance':

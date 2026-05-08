@@ -10,14 +10,16 @@ import type { Message, WidgetItem, WidgetSize, WidgetType } from '../types';
 
 const PINNED_INITIAL: WidgetItem[] = [
   { id: 'h2', type: 'storeRating', size: 'sm', refreshInterval: 1800 },
-  { id: 'h3', type: 'feedback', size: 'sm', refreshInterval: 600 },
-  { id: 'h4', type: 'tasks', size: 'sm', refreshInterval: 0 },
+  { id: 'h3', type: 'reviews', size: 'sm', refreshInterval: 600 },
+  { id: 'h4', type: 'feedback', size: 'sm', refreshInterval: 600 },
+  { id: 'h5', type: 'tasks', size: 'sm', refreshInterval: 0 },
 ];
 
 const PINNED_STORAGE_KEY = 'nabla.pinned.v1';
 const VALID_WIDGET_TYPES: ReadonlySet<WidgetType> = new Set([
   'weather',
   'storeRating',
+  'reviews',
   'feedback',
   'performance',
   'tasks',
@@ -76,9 +78,10 @@ const WIDGETS_INITIAL: WidgetItem[] = [
   { id: 'd0', type: 'weather', size: 'md', refreshInterval: 600 },
   { id: 'd1', type: 'storeRating', size: 'lg', refreshInterval: 1800 },
   { id: 'd2', type: 'performance', size: 'md', refreshInterval: 1800 },
-  { id: 'd3', type: 'feedback', size: 'lg', refreshInterval: 600 },
-  { id: 'd4', type: 'tasks', size: 'md', refreshInterval: 0 },
-  { id: 'd5', type: 'clock', size: 'sm', refreshInterval: 0 },
+  { id: 'd3', type: 'reviews', size: 'lg', refreshInterval: 600 },
+  { id: 'd4', type: 'feedback', size: 'lg', refreshInterval: 600 },
+  { id: 'd5', type: 'tasks', size: 'md', refreshInterval: 0 },
+  { id: 'd6', type: 'clock', size: 'sm', refreshInterval: 0 },
 ];
 
 const INITIAL_MESSAGES: Message[] = [

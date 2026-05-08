@@ -1,29 +1,25 @@
-import type { FeedbackData, FeedbackEntry, FeedbackSource } from '../types';
+import type { FeedbackEntry, FeedbackSource, ReviewsData } from '../types';
 import { setToolConnected } from '../state/toolConnections';
 
 const FETCH_TIMEOUT_MS = 15_000;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
-interface FeedbackEntrySnapshot {
+interface ReviewEntrySnapshot {
   title?: string;
   text: string;
   author: string;
   createdAt: number;
   stars: number;
   source: FeedbackSource;
-  labels?: { name: string; color: string }[];
-  images?: string[];
 }
 
-interface FeedbackResponse {
-  items: FeedbackEntrySnapshot[];
-  unread: number;
-  hasMore: boolean;
-  sources: { github: boolean };
+interface ReviewsResponse {
+  items: ReviewEntrySnapshot[];
+  sources: { appStore: boolean; googlePlay: boolean };
 }
 
-let cached: { data: FeedbackData; at: number } | null = null;
-let inFlight: Promise<FeedbackData> | null = null;
+let cached: { data: ReviewsData; at: number } | null = null;
+let inFlight: Promise<ReviewsData> | null = null;
 
 function relativeTime(ts: number, now: number = Date.now()): string {
   const diff = now - ts;
@@ -44,7 +40,7 @@ function relativeTime(ts: number, now: number = Date.now()): string {
   ).padStart(2, '0')}`;
 }
 
-function toEntry(snap: FeedbackEntrySnapshot): FeedbackEntry {
+function toEntry(snap: ReviewEntrySnapshot): FeedbackEntry {
   return {
     stars: snap.stars,
     title: snap.title,
@@ -52,20 +48,18 @@ function toEntry(snap: FeedbackEntrySnapshot): FeedbackEntry {
     author: snap.author,
     when: relativeTime(snap.createdAt),
     source: snap.source,
-    labels: snap.labels,
-    images: snap.images,
   };
 }
 
-export function getCachedFeedback(maxAgeMs = CACHE_TTL_MS): FeedbackData | null {
+export function getCachedReviews(maxAgeMs = CACHE_TTL_MS): ReviewsData | null {
   if (!cached) return null;
   if (Date.now() - cached.at > maxAgeMs) return null;
   return cached.data;
 }
 
-export async function fetchFeedback(opts?: { force?: boolean }): Promise<FeedbackData> {
+export async function fetchReviews(opts?: { force?: boolean }): Promise<ReviewsData> {
   if (!opts?.force) {
-    const fresh = getCachedFeedback();
+    const fresh = getCachedReviews();
     if (fresh) return fresh;
   }
   if (inFlight) return inFlight;
@@ -73,19 +67,22 @@ export async function fetchFeedback(opts?: { force?: boolean }): Promise<Feedbac
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
     try {
-      const res = await fetch('/api/feedback', { signal: ctrl.signal });
+      const res = await fetch('/api/reviews', { signal: ctrl.signal });
       if (!res.ok) {
-        setToolConnected('github', false);
-        throw new Error(`feedback proxy ${res.status}`);
+        setToolConnected('appStoreConnect', false);
+        setToolConnected('googlePlayConsole', false);
+        throw new Error(`reviews proxy ${res.status}`);
       }
-      const json = (await res.json()) as FeedbackResponse;
-      setToolConnected('github', json.sources.github);
+      const json = (await res.json()) as ReviewsResponse;
+      setToolConnected('appStoreConnect', json.sources.appStore);
+      setToolConnected('googlePlayConsole', json.sources.googlePlay);
       const items = json.items.map(toEntry);
-      const data: FeedbackData = { items, unread: json.unread, hasMore: json.hasMore };
+      const data: ReviewsData = { items };
       cached = { data, at: Date.now() };
       return data;
     } catch (err) {
-      setToolConnected('github', false);
+      setToolConnected('appStoreConnect', false);
+      setToolConnected('googlePlayConsole', false);
       throw err;
     } finally {
       clearTimeout(timer);

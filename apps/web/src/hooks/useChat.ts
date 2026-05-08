@@ -14,7 +14,8 @@ function detectWidget(text: string): WidgetType | null {
   const t = text.toLowerCase();
   if (/天気|weather|気温|雨/.test(t)) return 'weather';
   if (/評価|レーティング|星|rating|store/.test(t)) return 'storeRating';
-  if (/フィードバック|レビュー|feedback|review|声/.test(t)) return 'feedback';
+  if (/レビュー|review/.test(t)) return 'reviews';
+  if (/(フィードバック|github|issue|要望|ユーザーの?声|利用者の?声)/.test(t)) return 'feedback';
   if (/パフォーマンス|クラッシュ|起動|perf|crash/.test(t)) return 'performance';
   if (/タスク|todo|task/.test(t)) return 'tasks';
   if (/時間|時刻|日時|日付|今何時/.test(t) || /\b(clock|time|date)\b/.test(t)) return 'clock';

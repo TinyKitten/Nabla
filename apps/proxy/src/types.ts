@@ -63,7 +63,12 @@ export interface FeedbackResponse {
   items: FeedbackEntrySnapshot[];
   unread: number;
   hasMore: boolean;
-  sources: { github: boolean; appStore: boolean; googlePlay: boolean };
+  sources: { github: boolean };
+}
+
+export interface ReviewsResponse {
+  items: FeedbackEntrySnapshot[];
+  sources: { appStore: boolean; googlePlay: boolean };
 }
 
 export interface WeatherHourly {
