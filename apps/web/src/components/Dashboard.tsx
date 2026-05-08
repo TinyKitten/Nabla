@@ -1,19 +1,72 @@
-import { type DragEvent, Fragment } from 'react';
+import {
+  type DragEvent,
+  type CSSProperties,
+  Fragment,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Icon } from './Icon';
 import { Widget } from './Widgets';
-import { DropIndicator } from './DropIndicator';
 import { usePinnedReorder } from '../hooks/usePinnedReorder';
 import type { ShellContext } from './AppShell';
 
+const COLUMN_WIDTH = 280;
+const GAP = 16;
+
+const dashboardDropIndicatorStyle: CSSProperties = {
+  width: COLUMN_WIDTH,
+  height: 4,
+  background: 'var(--accent)',
+  borderRadius: 2,
+  boxShadow: '0 0 0 4px color-mix(in oklab, var(--accent) 18%, transparent)',
+};
+
+function DashboardDropIndicator() {
+  return <div style={dashboardDropIndicatorStyle} />;
+}
+
 function computeIdxFromGrid(e: DragEvent, container: Element) {
-  const items = Array.from(container.querySelectorAll('[data-dashboard-tile]'));
-  for (let i = 0; i < items.length; i++) {
-    const r = items[i].getBoundingClientRect();
-    if (e.clientY < r.top) return i;
-    if (e.clientY < r.bottom && e.clientX < r.left + r.width / 2) return i;
+  const items = Array.from(container.querySelectorAll<HTMLElement>('[data-dashboard-tile]'));
+  if (items.length === 0) return 0;
+  let bestIdx = 0;
+  let bestDist = Infinity;
+  for (const item of items) {
+    const idxStr = item.getAttribute('data-dashboard-idx');
+    if (idxStr === null) continue;
+    const idx = Number(idxStr);
+    const r = item.getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    const dx = e.clientX - cx;
+    const dy = e.clientY - cy;
+    const d = dx * dx + dy * dy;
+    if (d < bestDist) {
+      bestDist = d;
+      bestIdx = e.clientY < cy ? idx : idx + 1;
+    }
   }
-  return items.length;
+  return bestIdx;
+}
+
+function useColumnCount(itemCount: number) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [count, setCount] = useState(1);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () => {
+      const w = el.clientWidth;
+      const fit = Math.max(1, Math.floor((w + GAP) / (COLUMN_WIDTH + GAP)));
+      setCount(fit);
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, Math.min(count, Math.max(itemCount, 1))] as const;
 }
 
 export function Dashboard() {
@@ -25,6 +78,8 @@ export function Dashboard() {
       computeIdx: computeIdxFromGrid,
       onAcceptFromGrid: pinWidget,
     });
+
+  const [columnsRef, colCount] = useColumnCount(pinned.length);
 
   const tintBg =
     acceptingExternal === 'blocked'
@@ -73,6 +128,12 @@ export function Dashboard() {
     );
   }
 
+  const cols: number[][] = Array.from({ length: colCount }, () => []);
+  pinned.forEach((_, i) => {
+    cols[i % colCount].push(i);
+  });
+  const tailColumn = pinned.length % colCount;
+
   return (
     <div
       {...containerProps}
@@ -85,42 +146,57 @@ export function Dashboard() {
       }}
     >
       <div
+        ref={columnsRef}
         style={{
           display: 'flex',
-          flexWrap: 'wrap',
-          gap: 16,
+          gap: GAP,
           alignItems: 'flex-start',
         }}
       >
-        {pinned.map((w, i) => {
-          const isDragging = draggingId === w.id;
-          const showInsertBefore =
-            dropIdx === i &&
-            (acceptingExternal === true || (draggingId !== null && draggingId !== w.id));
-          return (
-            <Fragment key={w.id}>
-              {showInsertBefore && <DropIndicator />}
-              <div
-                data-dashboard-tile
-                style={{
-                  opacity: isDragging ? 0.4 : 1,
-                  transition: 'opacity 0.12s',
-                }}
-              >
-                <Widget
-                  widget={{ ...w, size: 'md' }}
-                  isPinned
-                  onRemove={() => setPinned((p) => p.filter((x) => x.id !== w.id))}
-                  onUnpin={() => setPinned((p) => p.filter((x) => x.id !== w.id))}
-                  dragHandleProps={dragHandleProps(w.id)}
-                />
-              </div>
-            </Fragment>
-          );
-        })}
-        {dropIdx === pinned.length && (acceptingExternal === true || draggingId !== null) && (
-          <DropIndicator />
-        )}
+        {cols.map((indices, c) => (
+          <div
+            key={c}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: GAP,
+              width: COLUMN_WIDTH,
+              flexShrink: 0,
+            }}
+          >
+            {indices.map((i) => {
+              const w = pinned[i];
+              const isDragging = draggingId === w.id;
+              const showInsertBefore =
+                dropIdx === i &&
+                (acceptingExternal === true || (draggingId !== null && draggingId !== w.id));
+              return (
+                <Fragment key={w.id}>
+                  {showInsertBefore && <DashboardDropIndicator />}
+                  <div
+                    data-dashboard-tile
+                    data-dashboard-idx={i}
+                    style={{
+                      opacity: isDragging ? 0.4 : 1,
+                      transition: 'opacity 0.12s',
+                    }}
+                  >
+                    <Widget
+                      widget={{ ...w, size: 'md' }}
+                      isPinned
+                      onRemove={() => setPinned((p) => p.filter((x) => x.id !== w.id))}
+                      onUnpin={() => setPinned((p) => p.filter((x) => x.id !== w.id))}
+                      dragHandleProps={dragHandleProps(w.id)}
+                    />
+                  </div>
+                </Fragment>
+              );
+            })}
+            {dropIdx === pinned.length &&
+              c === tailColumn &&
+              (acceptingExternal === true || draggingId !== null) && <DashboardDropIndicator />}
+          </div>
+        ))}
       </div>
     </div>
   );
