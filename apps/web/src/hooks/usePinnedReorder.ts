@@ -65,11 +65,11 @@ export function usePinnedReorder({
       let blocked = false;
       if (fromGrid) {
         const t = window.__draggingGridWidgetType;
-        if (t && pinnedTypes.includes(t)) blocked = true;
+        if (!t || pinnedTypes.includes(t)) blocked = true;
       }
       if (fromInline) {
         const t = window.__draggingInlineWidgetType;
-        if (t && pinnedTypes.includes(t)) blocked = true;
+        if (!t || pinnedTypes.includes(t)) blocked = true;
       }
       e.preventDefault();
       if (blocked) {
