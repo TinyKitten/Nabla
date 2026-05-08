@@ -92,7 +92,7 @@ export function usePinnedReorder({
       if (gridId && onAcceptFromGrid) {
         e.preventDefault();
         const t = window.__draggingGridWidgetType;
-        if (!(t && pinnedTypes.includes(t))) {
+        if (t && !pinnedTypes.includes(t)) {
           onAcceptFromGrid(gridId, dropIdx == null ? items.length : dropIdx);
         }
       } else if (pinId) {

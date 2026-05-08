@@ -150,7 +150,8 @@ export function PinnedStrip({
             {widgets.map((w, i) => {
               const isDragging = draggingId === w.id;
               const showInsertBefore =
-                dropIdx === i && (acceptingExternal || (draggingId && draggingId !== w.id));
+                dropIdx === i &&
+                (acceptingExternal === true || (draggingId && draggingId !== w.id));
               return (
                 <Fragment key={w.id}>
                   {showInsertBefore && <DropIndicator />}
@@ -177,7 +178,8 @@ export function PinnedStrip({
                 </Fragment>
               );
             })}
-            {dropIdx === widgets.length && (acceptingExternal || draggingId) && <DropIndicator />}
+            {dropIdx === widgets.length &&
+              (acceptingExternal === true || draggingId) && <DropIndicator />}
             <button
               className="btn-icon"
               style={{

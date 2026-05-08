@@ -95,7 +95,8 @@ export function Dashboard() {
         {pinned.map((w, i) => {
           const isDragging = draggingId === w.id;
           const showInsertBefore =
-            dropIdx === i && (acceptingExternal || (draggingId !== null && draggingId !== w.id));
+            dropIdx === i &&
+            (acceptingExternal === true || (draggingId !== null && draggingId !== w.id));
           return (
             <Fragment key={w.id}>
               {showInsertBefore && <DropIndicator />}
@@ -117,7 +118,7 @@ export function Dashboard() {
             </Fragment>
           );
         })}
-        {dropIdx === pinned.length && (acceptingExternal || draggingId !== null) && (
+        {dropIdx === pinned.length && (acceptingExternal === true || draggingId !== null) && (
           <DropIndicator />
         )}
       </div>
