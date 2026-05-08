@@ -149,7 +149,7 @@ function detectIntent(text: string): keyof typeof QUICK_REPLIES | null {
   if (/ウィジェットを追加|ウィジェット追加|widget add|add widget/.test(t)) return 'addWidget';
   if (/天気|weather|気温|雨/.test(t)) return 'weather';
   if (/評価|レーティング|星|rating|store/.test(t)) return 'rating';
-  if (/フィードバック|github|issue|要望|声/.test(t)) return 'feedback';
+  if (/(フィードバック|github|issue|要望|ユーザーの?声|利用者の?声)/.test(t)) return 'feedback';
   if (/レビュー|review/.test(t)) return 'reviews';
   if (/パフォーマンス|クラッシュ|起動|perf|crash/.test(t)) return 'perf';
   if (/タスク|todo|task/.test(t)) return 'tasks';

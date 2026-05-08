@@ -30,7 +30,6 @@ function relativeTime(ts: number, now: number = Date.now()): string {
   if (hours < 24) return `${hours}時間前`;
   const startOfToday = new Date(now);
   startOfToday.setHours(0, 0, 0, 0);
-  if (ts >= startOfToday.getTime()) return '今日';
   const startOfYesterday = startOfToday.getTime() - 24 * 60 * 60 * 1000;
   if (ts >= startOfYesterday) return '昨日';
   const days = Math.floor((startOfToday.getTime() - ts) / (24 * 60 * 60 * 1000)) + 1;
