@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Icon } from './Icon';
+import { Markdown } from './Markdown';
 import { renderText, ToolTrace, MessageActions } from './MessageRender';
 import { Widget } from './Widgets';
 import type { GitHubLabel, Message, WidgetType } from '../types';
@@ -138,8 +139,17 @@ export function MessageRow({ m, pinnedTypes, onPinInline }: MessageRowProps) {
             className="jp-text"
             style={{ color: 'var(--ink-2)', lineHeight: 1.7, fontSize: 14 }}
           >
-            {renderText(m.text)}
-            {m.streaming && <span className="caret-blink" />}
+            {m.format === 'markdown' ? (
+              <Markdown
+                text={m.text}
+                trailing={m.streaming ? <span className="caret-blink" /> : null}
+              />
+            ) : (
+              <>
+                {renderText(m.text)}
+                {m.streaming && <span className="caret-blink" />}
+              </>
+            )}
           </div>
         )}
         {m.labels && m.labels.length > 0 && !m.streaming && <LabelPills labels={m.labels} />}

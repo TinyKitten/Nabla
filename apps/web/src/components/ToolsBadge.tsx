@@ -14,6 +14,7 @@ const TOOLS: ToolEntry[] = [
   { key: 'github', name: 'GitHub', desc: 'フィードバック' },
   { key: 'linear', name: 'Linear', desc: 'タスク' },
   { key: 'sentry', name: 'Sentry', desc: 'パフォーマンス' },
+  { key: 'openclaw', name: 'OpenClaw', desc: 'チャットエージェント' },
 ];
 
 const COLOR_CONNECTED = '#22c55e';

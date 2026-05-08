@@ -222,7 +222,86 @@ async function streamGitHubImage(res: ServerResponse, raw: string) {
   }
 }
 
+const OPENCLAW_FETCH_TIMEOUT_MS = 120_000;
+
+async function streamOpenClawChat(req: IncomingMessage, res: ServerResponse) {
+  const baseUrl = process.env.OPENCLAW_GATEWAY_URL;
+  const token = process.env.OPENCLAW_GATEWAY_TOKEN;
+  if (!baseUrl || !token) {
+    send(res, 503, { error: 'OPENCLAW_GATEWAY_URL / OPENCLAW_GATEWAY_TOKEN not configured' });
+    return;
+  }
+  const chunks: Buffer[] = [];
+  let total = 0;
+  const MAX_BODY = 1_000_000;
+  for await (const chunk of req) {
+    const buf = chunk as Buffer;
+    total += buf.length;
+    if (total > MAX_BODY) {
+      send(res, 413, { error: 'request body too large' });
+      return;
+    }
+    chunks.push(buf);
+  }
+  const body = Buffer.concat(chunks).toString('utf8');
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), OPENCLAW_FETCH_TIMEOUT_MS);
+  req.on('close', () => ctrl.abort());
+  let upstream: Response;
+  try {
+    upstream = await fetch(`${baseUrl.replace(/\/$/, '')}/v1/chat/completions`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+      },
+      body,
+      signal: ctrl.signal,
+    });
+  } catch (err) {
+    clearTimeout(timer);
+    console.warn('[chat] upstream fetch failed:', err instanceof Error ? err.message : err);
+    if (!res.headersSent) send(res, 502, { error: 'upstream fetch failed' });
+    return;
+  }
+  if (!upstream.ok || !upstream.body) {
+    const text = await upstream.text().catch(() => '');
+    clearTimeout(timer);
+    if (!res.headersSent) {
+      res.writeHead(upstream.status, { 'content-type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: 'upstream error', status: upstream.status, body: text.slice(0, 1000) }));
+    }
+    return;
+  }
+  res.writeHead(200, {
+    'content-type': upstream.headers.get('content-type') ?? 'text/event-stream; charset=utf-8',
+    'cache-control': 'no-cache, no-transform',
+    'x-accel-buffering': 'no',
+    connection: 'keep-alive',
+  });
+  const reader = upstream.body.getReader();
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      if (value && !res.write(value)) {
+        await new Promise<void>((resolve) => res.once('drain', resolve));
+      }
+    }
+  } catch (err) {
+    console.warn('[chat] stream relay failed:', err instanceof Error ? err.message : err);
+  } finally {
+    clearTimeout(timer);
+    res.end();
+  }
+}
+
 async function handle(req: IncomingMessage, res: ServerResponse) {
+  if (req.method === 'POST' && req.url === '/api/chat') {
+    await streamOpenClawChat(req, res);
+    return;
+  }
   if (req.method !== 'GET') {
     send(res, 404, { error: 'not found' });
     return;

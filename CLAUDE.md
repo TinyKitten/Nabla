@@ -56,8 +56,14 @@ The drop target inspects `dataTransfer.types` to decide what to do:
 
 The grid panel itself is also a drop target — dropping a pinned widget there unpins it.
 
-**3. `useChat` is fake — mostly.**
-`src/hooks/useChat.ts` matches user input against `QUICK_REPLIES` (regex intent detection: 天気/評価/フィードバック/パフォーマンス/ウィジェット追加) plus a `タスク追加 X` / `add task: X` shortcut that calls `addLocalTask()` directly, runs simulated tool calls with timeouts, then character-streams the canned reply. There is no model call. Each canned `text` can be a static string or an async function — the `weather` reply is the latter and pulls from `getCachedWeather()` / `fetchWeather()` so it stays in sync with what the widget shows.
+**3. Chat is wired to a local OpenClaw gateway.**
+`src/hooks/useChat.ts` POSTs the conversation (with a small system prompt) to `/api/chat`, which the proxy forwards to OpenClaw's OpenAI-compatible `POST /v1/chat/completions` (`http://127.0.0.1:18789` by default, bearer token in `OPENCLAW_GATEWAY_TOKEN`). The reply is read from the SSE stream (`data: {choices:[{delta:{content}}]}` chunks, terminated by `data: [DONE]`) and appended to the AI message in real time. The bearer token never reaches the browser; only the proxy holds it. `setToolConnected('openclaw', …)` updates `ToolsBadge` based on whether the call succeeded.
+
+Two things still run client-side without going through OpenClaw:
+- `タスク追加 X` / `add task: X` short-circuits to `addLocalTask()` and skips the model call.
+- A small `detectWidget()` regex on the user input drives the AI message's `widget` field so the matching widget auto-attaches (天気/評価/フィードバック/パフォーマンス/タスク/時計). The text itself comes from OpenClaw — only the widget hint is local.
+
+Stopping a streaming reply aborts the underlying `fetch` via `AbortController`, so the proxy's relay loop also closes.
 
 Most `WIDGET_DEFS[type].fetch()` are stubbed and return mock data with light randomness. The connected fetchers live in `apps/web/src/data/`:
 
@@ -74,7 +80,7 @@ Most `WIDGET_DEFS[type].fetch()` are stubbed and return mock data with light ran
 
 The tasks fetcher merges Linear and local entries into a single list. Local tasks are persisted under `nabla.tasks.v1` in `localStorage` (records with stable ids). Done state is stored two ways: for `local:` ids it lives on the record itself; for `linear:` ids it's a per-issue override map (Linear write-back is intentionally out of scope). Mutations dispatch a `nabla-tasks-changed` `CustomEvent` on `window`, which the tasks instance of `useWidget` listens to so the widget refreshes immediately after a chat-driven add.
 
-The eventual plan, per the design intent, is an MCP-style tool layer ("OpenClaw") wired in behind the chat. Until each widget moves over, anything *not* under `src/data/` that looks like an API call is a `setTimeout`.
+The chat path itself now goes through OpenClaw (see point 3 above), but the widgets still fetch directly. The eventual plan, per the design intent, is to expose each widget's data as an OpenClaw / MCP tool so the agent can fetch and reason over it. Until each widget moves over, anything *not* under `src/data/` that looks like an API call is a `setTimeout`.
 
 **4. Tool connection state.**
 `apps/web/src/state/toolConnections.ts` is a `useSyncExternalStore`-backed module keyed by MCP tool name. Keys today: `openWeather`, `appStoreConnect`, `googlePlayConsole`, `github`, `linear`, `sentry`. `ToolsBadge` derives its count and per-tool dot colors from this store, and real data fetchers in `apps/web/src/data/` are responsible for calling `setToolConnected(name, true|false)` on success / failure. The proxy endpoints return per-source flags (e.g. `sources.appStore`, `sources.googlePlay`, `sources.github`, `sources.linear`, `sources.sentry`) and the client fetcher mirrors them into the store. Add a new key here only when an actual connection lands.
@@ -93,7 +99,7 @@ The eventual plan, per the design intent, is an MCP-style tool layer ("OpenClaw"
 - **Oxlint with default rules only.** `apps/web/.oxlintrc.json` is intentionally near-empty (just `$schema` + `ignorePatterns`). **Do not add plugins or `rules` overrides without explicit user agreement.** A previous setup added react-perf / unicorn / jsx-a11y plugins and then needed many `"off"` overrides to silence false positives — that churn is what we're avoiding.
 - **Japanese UI strings.** Most user-facing copy is Japanese. Match the existing tone (です/ます). Code comments and identifiers stay English.
 - **Don't restore removed variants.** `variant-d`, `variant-e`, `layout-timeline`, `layout-workbench`, `design-canvas` from the original design bundle were intentionally not ported.
-- **Local secrets in root `.env.local`.** All keys are proxy-only — nothing ships to the browser. Current keys: `OPENWEATHER_API_KEY`, `APP_STORE_CONNECT_*`, `GOOGLE_PLAY_PACKAGE_NAME`, `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_PATH`, `GITHUB_TOKEN`, `LINEAR_API_KEY`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG_SLUG`, `SENTRY_PROJECT_SLUG`. The proxy reads `.env.local` via Node's `--env-file`; Vite still reads it via `envDir: '../../'` for any future client-side flag, but no `VITE_*` secret is currently used. Missing key → the widget shows skeleton (or, for tasks, only the local list) and the relevant tool stays disconnected; that's the intended fallback, not a bug.
+- **Local secrets in root `.env.local`.** All keys are proxy-only — nothing ships to the browser. Current keys: `OPENWEATHER_API_KEY`, `APP_STORE_CONNECT_*`, `GOOGLE_PLAY_PACKAGE_NAME`, `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_PATH`, `GITHUB_TOKEN`, `LINEAR_API_KEY`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG_SLUG`, `SENTRY_PROJECT_SLUG`, `OPENCLAW_GATEWAY_URL`, `OPENCLAW_GATEWAY_TOKEN`. The proxy reads `.env.local` via Node's `--env-file`; Vite still reads it via `envDir: '../../'` for any future client-side flag, but no `VITE_*` secret is currently used. Missing key → the widget shows skeleton (or, for tasks, only the local list) and the relevant tool stays disconnected; that's the intended fallback, not a bug.
 - **Branch naming.** Use the full word `feature/` (not `feat/`) as the prefix for feature branches — e.g. `feature/issue-1-weather`. Same expectation likely applies to other prefixes (`fix/`, `chore/`).
 - **PR assignee.** When opening a PR, assign it to `@TinyKitten` (pass `--assignee TinyKitten` to `gh pr create`). This is a single-maintainer repo; assignment makes the PR show up on the author's dashboard.
 - **Keep the PR description in sync with the diff.** Whenever new commits are pushed to an existing PR (or its scope shifts), update the PR body with `gh pr edit <num> --body ...` so the description always reflects what's actually in the PR. Don't let description and diff drift apart.
