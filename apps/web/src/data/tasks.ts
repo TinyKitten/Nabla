@@ -121,9 +121,13 @@ export async function fetchTasks(opts?: { force?: boolean }): Promise<TasksData>
         clearTimeout(timer);
       }
       setToolConnected('linear', linearConnected);
-      const data = buildSnapshot(linear, readState());
-      if (fetchOk) cached = { data, at: Date.now() };
-      return data;
+      if (fetchOk) {
+        const data = buildSnapshot(linear, readState());
+        cached = { data, at: Date.now() };
+        return data;
+      }
+      if (cached) return cached.data;
+      throw new Error('tasks fetch failed and no cached snapshot available');
     } finally {
       inFlight = null;
     }
