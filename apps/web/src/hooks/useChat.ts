@@ -136,7 +136,8 @@ function detectIntent(text: string): keyof typeof QUICK_REPLIES | null {
   if (/フィードバック|レビュー|feedback|review|声/.test(t)) return 'feedback';
   if (/パフォーマンス|クラッシュ|起動|perf|crash/.test(t)) return 'perf';
   if (/タスク|todo|task/.test(t)) return 'tasks';
-  if (/時間|時刻|日時|日付|今何時|clock|time|date/.test(t)) return 'clock';
+  if (/時間|時刻|日時|日付|今何時/.test(t) || /\b(clock|time|date)\b/.test(t))
+    return 'clock';
   return null;
 }
 
