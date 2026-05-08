@@ -6,13 +6,67 @@ import { Icon } from './Icon';
 import { ToolsBadge } from './ToolsBadge';
 import { WidgetGrid } from './WidgetGrid';
 import { WIDGET_DEFS } from './Widgets';
-import type { Message, WidgetItem, WidgetType } from '../types';
+import type { Message, WidgetItem, WidgetSize, WidgetType } from '../types';
 
 const PINNED_INITIAL: WidgetItem[] = [
   { id: 'h2', type: 'storeRating', size: 'sm', refreshInterval: 1800 },
   { id: 'h3', type: 'feedback', size: 'sm', refreshInterval: 600 },
   { id: 'h4', type: 'tasks', size: 'sm', refreshInterval: 0 },
 ];
+
+const PINNED_STORAGE_KEY = 'nabla.pinned.v1';
+const VALID_WIDGET_TYPES: ReadonlySet<WidgetType> = new Set([
+  'weather',
+  'storeRating',
+  'feedback',
+  'performance',
+  'tasks',
+]);
+const VALID_WIDGET_SIZES: ReadonlySet<WidgetSize> = new Set(['sm', 'md', 'lg']);
+
+function isPersistedPinnedItem(x: unknown): x is WidgetItem {
+  if (!x || typeof x !== 'object') return false;
+  const o = x as Record<string, unknown>;
+  return (
+    typeof o.id === 'string' &&
+    typeof o.type === 'string' &&
+    VALID_WIDGET_TYPES.has(o.type as WidgetType) &&
+    typeof o.size === 'string' &&
+    VALID_WIDGET_SIZES.has(o.size as WidgetSize) &&
+    typeof o.refreshInterval === 'number' &&
+    Number.isFinite(o.refreshInterval)
+  );
+}
+
+function readPersistedPinned(): WidgetItem[] | null {
+  if (typeof localStorage === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(PINNED_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    const seen = new Set<WidgetType>();
+    const items: WidgetItem[] = [];
+    for (const x of parsed) {
+      if (!isPersistedPinnedItem(x)) continue;
+      if (seen.has(x.type)) continue;
+      seen.add(x.type);
+      items.push(x);
+    }
+    return items;
+  } catch {
+    return null;
+  }
+}
+
+function writePersistedPinned(items: WidgetItem[]): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(PINNED_STORAGE_KEY, JSON.stringify(items));
+  } catch {
+    // localStorage unavailable / quota — fall through silently
+  }
+}
 
 const WIDGETS_INITIAL: WidgetItem[] = [
   { id: 'd0', type: 'weather', size: 'md', refreshInterval: 600 },
@@ -64,8 +118,11 @@ const tabBtnStyle = (active: boolean) => ({
 export function AppShell() {
   const chat = useChat(INITIAL_MESSAGES);
   const navigate = useNavigate();
-  const [pinned, setPinned] = useState<WidgetItem[]>(PINNED_INITIAL);
+  const [pinned, setPinned] = useState<WidgetItem[]>(() => readPersistedPinned() ?? PINNED_INITIAL);
   const [widgets, setWidgets] = useState<WidgetItem[]>(WIDGETS_INITIAL);
+  useEffect(() => {
+    writePersistedPinned(pinned);
+  }, [pinned]);
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== 'undefined' && window.innerWidth < 720,
   );
