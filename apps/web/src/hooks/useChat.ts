@@ -113,7 +113,9 @@ export function useChat(initialMessages: Message[] = []) {
           { name: 'openclaw', label: '考え中', icon: 'sparkle', status: 'running' },
         ];
         setMessages((prev) =>
-          prev.map((m) => (m.id === aiId ? { ...m, tools: [...tools] } : m)),
+          prev.map((m) =>
+            m.id === aiId ? { ...m, tools: [...tools], format: 'markdown' } : m,
+          ),
         );
 
         const ctrl = new AbortController();
@@ -151,6 +153,7 @@ export function useChat(initialMessages: Message[] = []) {
                   streaming: false,
                   actions: true,
                   widget,
+                  format: 'markdown',
                 }
               : m,
           ),

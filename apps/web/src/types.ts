@@ -111,6 +111,7 @@ export interface Message {
   widget?: WidgetType | null;
   labels?: GitHubLabel[];
   images?: string[];
+  format?: 'plain' | 'markdown';
 }
 
 export interface DragHandleProps {
