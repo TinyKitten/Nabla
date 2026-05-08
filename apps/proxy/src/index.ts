@@ -137,6 +137,91 @@ function send(res: ServerResponse, status: number, body: unknown) {
   res.end(JSON.stringify(body));
 }
 
+const GITHUB_IMAGE_FETCH_TIMEOUT_MS = 15_000;
+
+function isAllowedGitHubHost(hostname: string): boolean {
+  return hostname === 'github.com' || hostname.endsWith('.githubusercontent.com');
+}
+
+async function streamGitHubImage(res: ServerResponse, raw: string) {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    send(res, 400, { error: 'invalid url' });
+    return;
+  }
+  if (url.protocol !== 'https:' || !isAllowedGitHubHost(url.hostname)) {
+    send(res, 400, { error: 'host not allowed' });
+    return;
+  }
+  const headers: Record<string, string> = { 'User-Agent': 'nabla-proxy' };
+  const token = process.env.GITHUB_TOKEN;
+  if (token) headers.Authorization = `Bearer ${token}`;
+  let upstream: Response;
+  try {
+    const signal = AbortSignal.timeout(GITHUB_IMAGE_FETCH_TIMEOUT_MS);
+    const MAX_REDIRECTS = 5;
+    let current = url;
+    let hops = 0;
+    while (true) {
+      const r = await fetch(current.toString(), { headers, redirect: 'manual', signal });
+      if (r.status < 300 || r.status >= 400) {
+        upstream = r;
+        break;
+      }
+      const loc = r.headers.get('location');
+      if (!loc) {
+        upstream = r;
+        break;
+      }
+      if (++hops > MAX_REDIRECTS) {
+        send(res, 502, { error: 'too many redirects' });
+        return;
+      }
+      let next: URL;
+      try {
+        next = new URL(loc, current);
+      } catch {
+        send(res, 502, { error: 'invalid redirect target' });
+        return;
+      }
+      if (next.protocol !== 'https:' || !isAllowedGitHubHost(next.hostname)) {
+        send(res, 400, { error: 'redirect to disallowed host' });
+        return;
+      }
+      current = next;
+    }
+  } catch (err) {
+    console.warn('[github-image] fetch failed:', err instanceof Error ? err.message : err);
+    send(res, 502, { error: 'upstream fetch failed' });
+    return;
+  }
+  if (!upstream.ok || !upstream.body) {
+    send(res, upstream.status, { error: 'upstream error' });
+    return;
+  }
+  const ct = upstream.headers.get('content-type') ?? 'application/octet-stream';
+  if (!ct.startsWith('image/')) {
+    send(res, 415, { error: 'not an image' });
+    return;
+  }
+  res.writeHead(200, {
+    'content-type': ct,
+    'cache-control': 'private, max-age=300',
+  });
+  const reader = upstream.body.getReader();
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      if (value) res.write(value);
+    }
+  } finally {
+    res.end();
+  }
+}
+
 async function handle(req: IncomingMessage, res: ServerResponse) {
   if (req.method !== 'GET') {
     send(res, 404, { error: 'not found' });
@@ -177,6 +262,15 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     return;
   }
   const url = req.url ? new URL(req.url, 'http://localhost') : null;
+  if (url?.pathname === '/api/github-image') {
+    const raw = url.searchParams.get('url');
+    if (!raw) {
+      send(res, 400, { error: 'url query param is required' });
+      return;
+    }
+    await streamGitHubImage(res, raw);
+    return;
+  }
   if (url?.pathname === '/api/weather') {
     const lat = parseCoord(url.searchParams.get('lat'), -90, 90);
     const lon = parseCoord(url.searchParams.get('lon'), -180, 180);

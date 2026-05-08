@@ -134,6 +134,37 @@ body {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* Shimmer skeleton */
+.skeleton-box {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-hover);
+}
+.skeleton-box::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.35),
+    transparent
+  );
+  transform: translateX(-100%);
+  animation: shimmer 1.4s infinite;
+}
+[data-theme="dark"] .skeleton-box::after {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.06),
+    transparent
+  );
+}
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+
 /* Scrollbar — minimal */
 .scroll-area {
   overflow-y: auto;

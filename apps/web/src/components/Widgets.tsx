@@ -15,6 +15,7 @@ import { fetchPerformance } from '../data/performance';
 import type {
   DragHandleProps,
   FeedbackData,
+  FeedbackEntry,
   FeedbackSource,
   HourlyForecast,
   PerformanceData,
@@ -919,6 +920,12 @@ function SourceTag({ source }: { source: FeedbackSource }) {
   );
 }
 
+export const FEEDBACK_DETAIL_EVENT = 'nabla-feedback-detail';
+
+function openFeedbackDetail(entry: FeedbackEntry) {
+  window.dispatchEvent(new CustomEvent(FEEDBACK_DETAIL_EVENT, { detail: entry }));
+}
+
 function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData | null }) {
   if (!data) return <Skeleton size={size} />;
   if (size === 'sm') {
@@ -979,7 +986,29 @@ function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData |
       );
     }
     return (
-      <>
+      <div
+        data-widget-control
+        role="button"
+        tabIndex={0}
+        onClick={(e) => {
+          e.stopPropagation();
+          openFeedbackDetail(top);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            e.stopPropagation();
+            openFeedbackDetail(top);
+          }
+        }}
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: 0,
+          cursor: 'pointer',
+        }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
           {top.stars > 0 && (
             <span style={{ color: 'var(--accent)', fontSize: 11, letterSpacing: '0.04em' }}>
@@ -989,20 +1018,39 @@ function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData |
           <SourceTag source={top.source} />
           <span style={{ fontSize: 10, color: 'var(--ink-4)' }}>{top.when}</span>
         </div>
-        <div
-          className="jp-text"
-          style={{
-            fontSize: 12.5,
-            color: 'var(--ink)',
-            lineHeight: 1.5,
-            overflow: 'hidden',
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-          }}
-        >
-          {top.text}
-        </div>
+        {top.title && (
+          <div
+            className="jp-text"
+            style={{
+              fontSize: 12.5,
+              color: 'var(--ink)',
+              lineHeight: 1.5,
+              overflow: 'hidden',
+              display: '-webkit-box',
+              WebkitLineClamp: 1,
+              WebkitBoxOrient: 'vertical',
+            }}
+          >
+            {top.title}
+          </div>
+        )}
+        {top.text && (
+          <div
+            className="jp-text"
+            style={{
+              fontSize: 12,
+              color: 'var(--ink-4)',
+              lineHeight: 1.5,
+              overflow: 'hidden',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              marginTop: top.title ? 2 : 0,
+            }}
+          >
+            {top.text}
+          </div>
+        )}
         <div style={{ flex: 1 }} />
         <div className="jp-text" style={{ fontSize: 10, color: 'var(--ink-4)' }}>
           — {top.author}
@@ -1010,7 +1058,7 @@ function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData |
             ? ` · 他 ${data.items.length - 1}${data.hasMore ? '+' : ''} 件`
             : ''}
         </div>
-      </>
+      </div>
     );
   }
   const visibleItems = data.items.slice(0, 5);
@@ -1019,9 +1067,24 @@ function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData |
       {visibleItems.map((it, i) => (
         <div
           key={i}
+          data-widget-control
+          role="button"
+          tabIndex={0}
+          onClick={(e) => {
+            e.stopPropagation();
+            openFeedbackDetail(it);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              e.stopPropagation();
+              openFeedbackDetail(it);
+            }
+          }}
           style={{
             paddingBottom: i < visibleItems.length - 1 ? 8 : 0,
             borderBottom: i < visibleItems.length - 1 ? '1px solid var(--line)' : 'none',
+            cursor: 'pointer',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
@@ -1036,20 +1099,39 @@ function FeedbackWidget({ size, data }: { size: WidgetSize; data: FeedbackData |
             </span>
             <SourceTag source={it.source} />
           </div>
-          <div
-            className="jp-text"
-            style={{
-              fontSize: 12,
-              color: 'var(--ink-2)',
-              lineHeight: 1.5,
-              overflow: 'hidden',
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
-            }}
-          >
-            {it.text}
-          </div>
+          {it.title && (
+            <div
+              className="jp-text"
+              style={{
+                fontSize: 12,
+                color: 'var(--ink)',
+                lineHeight: 1.5,
+                overflow: 'hidden',
+                display: '-webkit-box',
+                WebkitLineClamp: 1,
+                WebkitBoxOrient: 'vertical',
+              }}
+            >
+              {it.title}
+            </div>
+          )}
+          {it.text && (
+            <div
+              className="jp-text"
+              style={{
+                fontSize: 11.5,
+                color: 'var(--ink-4)',
+                lineHeight: 1.5,
+                overflow: 'hidden',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                marginTop: it.title ? 2 : 0,
+              }}
+            >
+              {it.text}
+            </div>
+          )}
           <div className="jp-text" style={{ fontSize: 10, color: 'var(--ink-4)', marginTop: 2 }}>
             — {it.author}
           </div>

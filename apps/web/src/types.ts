@@ -34,12 +34,20 @@ export interface StoreRatingData {
 
 export type FeedbackSource = 'github' | 'appStore' | 'googlePlay';
 
+export interface GitHubLabel {
+  name: string;
+  color: string;
+}
+
 export interface FeedbackEntry {
   stars: number;
+  title?: string;
   text: string;
   author: string;
   when: string;
   source: FeedbackSource;
+  labels?: GitHubLabel[];
+  images?: string[];
 }
 
 export interface FeedbackData {
@@ -94,6 +102,8 @@ export interface Message {
   tools?: ToolCall[];
   actions?: boolean;
   widget?: WidgetType | null;
+  labels?: GitHubLabel[];
+  images?: string[];
 }
 
 export interface DragHandleProps {

@@ -6,20 +6,43 @@ const PER_PAGE = 100;
 const FETCH_TIMEOUT_MS = 10_000;
 const SNAPSHOT_TTL_MS = 5 * 60 * 1000;
 
+interface GitHubIssueLabel {
+  name: string;
+  color: string;
+}
+
 interface GitHubIssue {
   number: number;
   title: string;
   body: string | null;
   created_at: string;
   pull_request?: unknown;
+  labels?: GitHubIssueLabel[];
 }
 
-function extractGeminiSummary(body: string | null): string | null {
+function extractFencedBlock(body: string | null): string | null {
   if (!body) return null;
-  const match = body.match(/##\s*Gemini[^\n]*\n([\s\S]*?)(?:\n##\s|$)/);
+  const match = body.match(/```[a-zA-Z0-9_-]*\n?([\s\S]*?)```/);
   if (!match) return null;
   const text = match[1].trim();
   return text.length > 0 ? text : null;
+}
+
+function extractImages(body: string | null): string[] {
+  if (!body) return [];
+  const urls: string[] = [];
+  const seen = new Set<string>();
+  const push = (u: string) => {
+    if (!u || seen.has(u)) return;
+    if (!/^https?:\/\//i.test(u)) return;
+    seen.add(u);
+    urls.push(u);
+  };
+  const md = /!\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
+  for (const m of body.matchAll(md)) push(m[1]);
+  const html = /<img[^>]*\bsrc\s*=\s*["']([^"']+)["'][^>]*>/gi;
+  for (const m of body.matchAll(html)) push(m[1]);
+  return urls;
 }
 
 export interface GitHubFeedbackSnapshot {
@@ -58,13 +81,20 @@ async function fetchGitHubFeedback(): Promise<GitHubFeedbackSnapshot> {
   const items: FeedbackEntrySnapshot[] = issues
     .filter((i) => !i.pull_request)
     .map((i) => {
-      const summary = extractGeminiSummary(i.body);
+      const fenced = extractFencedBlock(i.body);
+      const labels = (i.labels ?? [])
+        .filter((l): l is GitHubIssueLabel => !!l && typeof l.name === 'string')
+        .map((l) => ({ name: l.name, color: l.color || 'ededed' }));
+      const images = extractImages(i.body);
       return {
-        text: summary ?? i.title,
+        title: i.title,
+        text: fenced ?? '',
         author: '匿名',
         createdAt: Date.parse(i.created_at),
         stars: 0,
         source: 'github',
+        labels: labels.length ? labels : undefined,
+        images: images.length ? images : undefined,
       };
     });
 

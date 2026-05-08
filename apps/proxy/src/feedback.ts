@@ -5,21 +5,16 @@ import type { FeedbackEntrySnapshot, ReviewSample } from './types.js';
 
 const MAX_ITEMS = 50;
 
-function joinTitleBody(title?: string, body?: string): string {
-  const t = title?.trim() ?? '';
-  const b = body?.trim() ?? '';
-  if (t && b) return `${t} — ${b}`;
-  return t || b;
-}
-
 function reviewToEntry(
   r: ReviewSample,
   source: 'appStore' | 'googlePlay',
 ): FeedbackEntrySnapshot | null {
-  const text = source === 'appStore' ? joinTitleBody(r.title, r.body) : (r.body?.trim() ?? '');
-  if (!text) return null;
+  const title = source === 'appStore' ? (r.title?.trim() ?? '') : '';
+  const text = r.body?.trim() ?? '';
+  if (!title && !text) return null;
   return {
     stars: Math.max(1, Math.min(5, Math.round(r.rating))),
+    title: title || undefined,
     text,
     author: r.reviewer?.trim() || '匿名',
     createdAt: r.createdAt,

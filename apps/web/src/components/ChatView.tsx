@@ -5,8 +5,8 @@ import type { IconName } from './Icon';
 import { PinnedStrip } from './PinnedStrip';
 import { MessageRow } from './MessageRow';
 import { ChatComposer } from './ChatComposer';
-import { WIDGET_DEFS } from './Widgets';
-import type { WidgetItem } from '../types';
+import { FEEDBACK_DETAIL_EVENT, WIDGET_DEFS } from './Widgets';
+import type { FeedbackEntry, WidgetItem } from '../types';
 import type { ShellContext } from './AppShell';
 
 interface Shortcut {
@@ -25,12 +25,21 @@ const SHORTCUTS: Shortcut[] = [
 export function ChatView() {
   const { pinned, setPinned, pinWidget, acceptInlineToPin, isMobile, chat } =
     useOutletContext<ShellContext>();
-  const { messages, input, setInput, send, stop, streaming } = chat;
+  const { messages, input, setInput, send, stop, streaming, sendFeedbackDetail } = chat;
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages]);
+
+  useEffect(() => {
+    const onDetail = (e: Event) => {
+      const ce = e as CustomEvent<FeedbackEntry>;
+      if (ce.detail) sendFeedbackDetail(ce.detail);
+    };
+    window.addEventListener(FEEDBACK_DETAIL_EVENT, onDetail);
+    return () => window.removeEventListener(FEEDBACK_DETAIL_EVENT, onDetail);
+  }, [sendFeedbackDetail]);
 
   const openWidgetDetail = (w: WidgetItem) => {
     const def = WIDGET_DEFS[w.type];
