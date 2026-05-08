@@ -1,12 +1,8 @@
-import { type DragEvent, Fragment, useEffect, useMemo, useState } from 'react';
+import { type DragEvent, Fragment, useEffect, useState } from 'react';
 import { Icon } from './Icon';
 import { Widget } from './Widgets';
 import { DropIndicator } from './DropIndicator';
-import {
-  PINNED_DND_MIME,
-  reorderPinned,
-  usePinnedReorder,
-} from '../hooks/usePinnedReorder';
+import { usePinnedReorder } from '../hooks/usePinnedReorder';
 import type { WidgetItem, WidgetType } from '../types';
 
 function computeIdxFromX(e: DragEvent, container: Element) {
@@ -28,8 +24,6 @@ interface PinnedStripProps {
   onAdd: () => void;
 }
 
-type AcceptState = false | true | 'blocked';
-
 export function PinnedStrip({
   widgets,
   onReorder,
@@ -39,13 +33,14 @@ export function PinnedStrip({
   onAcceptInline,
   onAdd,
 }: PinnedStripProps) {
-  const reorder = usePinnedReorder({
-    items: widgets,
-    setItems: onReorder,
-    computeIdx: computeIdxFromX,
-  });
-  const { draggingId, setDraggingId, dropIdx, setDropIdx, dragHandleProps } = reorder;
-  const [acceptingExternal, setAcceptingExternal] = useState<AcceptState>(false);
+  const { draggingId, dropIdx, acceptingExternal, dragHandleProps, containerProps } =
+    usePinnedReorder({
+      items: widgets,
+      setItems: onReorder,
+      computeIdx: computeIdxFromX,
+      onAcceptFromGrid,
+      onAcceptInline,
+    });
   const [collapsed, setCollapsed] = useState(false);
   const [isMobileStrip, setIsMobileStrip] = useState(
     () => typeof window !== 'undefined' && window.innerWidth < 720,
@@ -55,70 +50,6 @@ export function PinnedStrip({
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
-  const pinnedTypes = useMemo(() => widgets.map((w) => w.type), [widgets]);
-
-  const containerOnDragOver = (e: DragEvent<HTMLDivElement>) => {
-    const types = e.dataTransfer.types;
-    const fromGrid = types.includes('application/x-widget-id');
-    const fromPin = types.includes(PINNED_DND_MIME);
-    const fromInline = types.includes('application/x-inline-type');
-    if (!fromGrid && !fromPin && !fromInline) return;
-    let blocked = false;
-    if (fromGrid) {
-      const t = window.__draggingGridWidgetType;
-      if (t && pinnedTypes.includes(t)) blocked = true;
-    }
-    if (fromInline) {
-      const t = window.__draggingInlineWidgetType;
-      if (t && pinnedTypes.includes(t)) blocked = true;
-    }
-    e.preventDefault();
-    if (blocked) {
-      e.dataTransfer.dropEffect = 'none';
-      setDropIdx(null);
-      setAcceptingExternal('blocked');
-      return;
-    }
-    e.dataTransfer.dropEffect = fromInline ? 'copy' : 'move';
-    setDropIdx(computeIdxFromX(e, e.currentTarget));
-    if (fromGrid || fromInline) setAcceptingExternal(true);
-  };
-
-  const containerOnDrop = (e: DragEvent<HTMLDivElement>) => {
-    const gridId = e.dataTransfer.getData('application/x-widget-id');
-    const pinId = e.dataTransfer.getData(PINNED_DND_MIME);
-    const inlineType = e.dataTransfer.getData('application/x-inline-type') as WidgetType | '';
-    if (gridId) {
-      e.preventDefault();
-      const gridType = window.__draggingGridWidgetType;
-      if (gridType && pinnedTypes.includes(gridType)) {
-        setDraggingId(null);
-        setDropIdx(null);
-        setAcceptingExternal(false);
-        return;
-      }
-      onAcceptFromGrid(gridId, dropIdx == null ? widgets.length : dropIdx);
-    } else if (pinId) {
-      e.preventDefault();
-      const next = reorderPinned(widgets, pinId, dropIdx);
-      if (next) onReorder(next);
-    } else if (inlineType) {
-      e.preventDefault();
-      if (!pinnedTypes.includes(inlineType) && onAcceptInline) {
-        onAcceptInline(inlineType, dropIdx == null ? widgets.length : dropIdx);
-      }
-    }
-    setDraggingId(null);
-    setDropIdx(null);
-    setAcceptingExternal(false);
-  };
-
-  const containerOnDragLeave = (e: DragEvent<HTMLDivElement>) => {
-    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
-      setDropIdx(null);
-      setAcceptingExternal(false);
-    }
-  };
 
   return (
     <div
@@ -206,9 +137,7 @@ export function PinnedStrip({
           }}
         >
           <div
-            onDragOver={containerOnDragOver}
-            onDrop={containerOnDrop}
-            onDragLeave={containerOnDragLeave}
+            {...containerProps}
             style={{
               display: 'flex',
               gap: 10,
