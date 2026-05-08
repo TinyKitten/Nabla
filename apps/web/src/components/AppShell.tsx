@@ -34,7 +34,9 @@ function isPersistedPinnedItem(x: unknown): x is WidgetItem {
     typeof o.size === 'string' &&
     VALID_WIDGET_SIZES.has(o.size as WidgetSize) &&
     typeof o.refreshInterval === 'number' &&
-    Number.isFinite(o.refreshInterval)
+    Number.isFinite(o.refreshInterval) &&
+    Number.isInteger(o.refreshInterval) &&
+    o.refreshInterval >= 0
   );
 }
 
@@ -53,6 +55,7 @@ function readPersistedPinned(): WidgetItem[] | null {
       seen.add(x.type);
       items.push(x);
     }
+    if (parsed.length > 0 && items.length === 0) return null;
     return items;
   } catch {
     return null;
