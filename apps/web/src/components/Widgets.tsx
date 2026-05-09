@@ -7,7 +7,7 @@ import {
   useState,
 } from 'react';
 import { Icon } from './Icon';
-import { fetchWeather } from '../data/weather';
+import { fetchWeather, getCachedWeather } from '../data/weather';
 import { fetchStoreRating } from '../data/storeRating';
 import { fetchTasks, toggleTaskDone, TASKS_CHANGED_EVENT } from '../data/tasks';
 import { fetchFeedback } from '../data/feedback';
@@ -79,6 +79,18 @@ export const WIDGET_DEFS: Record<WidgetType, WidgetDef> = {
     fetch: fetchClock,
   },
 };
+
+export function buildWidgetDetailPrompt(type: WidgetType): string {
+  const title = WIDGET_DEFS[type].title;
+  if (type === 'weather') {
+    const cached = getCachedWeather();
+    if (cached) {
+      const city = cached.location.split('・')[1] || cached.location;
+      if (city) return `${city}の${title}の詳しい状況を教えて`;
+    }
+  }
+  return `${title}の詳しい状況を教えて`;
+}
 
 interface SparklineProps {
   values: number[];

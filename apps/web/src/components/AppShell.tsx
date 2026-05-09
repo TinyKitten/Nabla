@@ -5,7 +5,7 @@ import { useChat } from '../hooks/useChat';
 import { Icon } from './Icon';
 import { ToolsBadge } from './ToolsBadge';
 import { WidgetGrid } from './WidgetGrid';
-import { WIDGET_DEFS } from './Widgets';
+import { buildWidgetDetailPrompt } from './Widgets';
 import type { Message, WidgetItem, WidgetSize, WidgetType } from '../types';
 
 const PINNED_INITIAL: WidgetItem[] = [
@@ -398,7 +398,7 @@ export function AppShell() {
             <WidgetGrid
               widgets={widgets}
               onReorder={setWidgets}
-              onOpen={(w) => goChatAndSend(`${WIDGET_DEFS[w.type].title}の詳しい状況を教えて`)}
+              onOpen={(w) => goChatAndSend(buildWidgetDetailPrompt(w.type))}
               onRemove={(id) => setWidgets((d) => d.filter((w) => w.id !== id))}
               onPin={(id) => pinWidget(id, pinned.length)}
               onUnpin={(type) => setPinned((p) => p.filter((x) => x.type !== type))}
