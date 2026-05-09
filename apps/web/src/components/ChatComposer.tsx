@@ -12,25 +12,61 @@ const fmtSeconds = (s: number) =>
 function VoiceOverlay({ onCommit, onCancel }: VoiceOverlayProps) {
   const [seconds, setSeconds] = useState(0);
   const [transcript, setTranscript] = useState('');
-  const phrases = useRef<string[]>([
-    'TrainLCD ',
-    'TrainLCD の今週の ',
-    'TrainLCD の今週のレビュー ',
-    'TrainLCD の今週のレビューを要約して',
-  ]);
+  const [error, setError] = useState<string | null>(null);
+  const finalRef = useRef('');
+
   useEffect(() => {
     const t = window.setInterval(() => setSeconds((s) => s + 1), 1000);
     return () => window.clearInterval(t);
   }, []);
+
   useEffect(() => {
-    let i = 0;
-    const interval = window.setInterval(() => {
-      if (i < phrases.current.length) {
-        setTranscript(phrases.current[i]);
-        i++;
+    const Ctor = window.SpeechRecognition ?? window.webkitSpeechRecognition;
+    if (!Ctor) {
+      setError('このブラウザは音声入力に対応していません');
+      return;
+    }
+    const rec = new Ctor();
+    rec.lang = 'ja-JP';
+    rec.continuous = true;
+    rec.interimResults = true;
+    let stopped = false;
+    let fatal = false;
+    rec.onresult = (event) => {
+      let interim = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        const text = result[0].transcript;
+        if (result.isFinal) {
+          finalRef.current += text;
+        } else {
+          interim += text;
+        }
       }
-    }, 700);
-    return () => window.clearInterval(interval);
+      setTranscript((finalRef.current + interim).trim());
+    };
+    rec.onerror = (event) => {
+      if (event.error === 'no-speech' || event.error === 'aborted') return;
+      fatal = true;
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        setError('マイクの使用が許可されていません');
+      } else {
+        setError(`音声認識エラー: ${event.error}`);
+      }
+    };
+    rec.onend = () => {
+      if (stopped || fatal) return;
+      try { rec.start(); } catch { /* already started */ }
+    };
+    try {
+      rec.start();
+    } catch {
+      /* start may throw if invoked twice; ignore */
+    }
+    return () => {
+      stopped = true;
+      try { rec.stop(); } catch { /* not started */ }
+    };
   }, []);
   return (
     <div
@@ -55,8 +91,10 @@ function VoiceOverlay({ onCommit, onCancel }: VoiceOverlayProps) {
               display: 'inline-block',
               width: 2.5,
               borderRadius: 2,
-              background: 'var(--accent)',
-              animation: `voice-bar 0.9s ease-in-out ${i * 0.05}s infinite alternate`,
+              background: error ? 'var(--line-strong)' : 'var(--accent)',
+              animation: error
+                ? undefined
+                : `voice-bar 0.9s ease-in-out ${i * 0.05}s infinite alternate`,
               height: 8 + ((i * 7) % 18),
             }}
           />
@@ -67,15 +105,21 @@ function VoiceOverlay({ onCommit, onCancel }: VoiceOverlayProps) {
           className="jp-text"
           style={{
             fontSize: 14,
-            color: 'var(--ink-2)',
+            color: error ? '#e63946' : 'var(--ink-2)',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             minHeight: 20,
           }}
         >
-          {transcript || <span style={{ color: 'var(--ink-4)' }}>聞き取り中…</span>}
-          <span className="caret-blink" />
+          {error ? (
+            error
+          ) : (
+            <>
+              {transcript || <span style={{ color: 'var(--ink-4)' }}>聞き取り中…</span>}
+              <span className="caret-blink" />
+            </>
+          )}
         </div>
         <div
           style={{
@@ -87,16 +131,18 @@ function VoiceOverlay({ onCommit, onCancel }: VoiceOverlayProps) {
             marginTop: 2,
           }}
         >
-          <span
-            style={{
-              width: 5,
-              height: 5,
-              borderRadius: '50%',
-              background: '#e63946',
-              animation: 'pulse 1.2s ease-in-out infinite',
-            }}
-          />
-          録音中 · {fmtSeconds(seconds)}
+          {!error && (
+            <span
+              style={{
+                width: 5,
+                height: 5,
+                borderRadius: '50%',
+                background: '#e63946',
+                animation: 'pulse 1.2s ease-in-out infinite',
+              }}
+            />
+          )}
+          {error ? '音声入力を停止しました' : `録音中 · ${fmtSeconds(seconds)}`}
         </div>
       </div>
       <button className="btn-icon" title="キャンセル" onClick={onCancel}>
@@ -104,16 +150,16 @@ function VoiceOverlay({ onCommit, onCancel }: VoiceOverlayProps) {
       </button>
       <button
         onClick={() => onCommit(transcript)}
-        disabled={!transcript}
+        disabled={!transcript || !!error}
         style={{
-          background: transcript ? 'var(--accent)' : 'var(--bg-hover)',
-          color: transcript ? '#fff' : 'var(--ink-4)',
+          background: transcript && !error ? 'var(--accent)' : 'var(--bg-hover)',
+          color: transcript && !error ? '#fff' : 'var(--ink-4)',
           border: 'none',
           borderRadius: 12,
           padding: '8px 14px',
           fontSize: 12.5,
           fontWeight: 600,
-          cursor: transcript ? 'pointer' : 'not-allowed',
+          cursor: transcript && !error ? 'pointer' : 'not-allowed',
           fontFamily: 'inherit',
         }}
       >
