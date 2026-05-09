@@ -5,7 +5,7 @@ import type { IconName } from './Icon';
 import { PinnedStrip } from './PinnedStrip';
 import { MessageRow } from './MessageRow';
 import { ChatComposer } from './ChatComposer';
-import { FEEDBACK_DETAIL_EVENT, WIDGET_DEFS } from './Widgets';
+import { buildWidgetDetailPrompt, FEEDBACK_DETAIL_EVENT } from './Widgets';
 import type { FeedbackEntry, WidgetItem } from '../types';
 import type { ShellContext } from './AppShell';
 
@@ -43,8 +43,7 @@ export function ChatView() {
   }, [sendFeedbackDetail]);
 
   const openWidgetDetail = (w: WidgetItem) => {
-    const def = WIDGET_DEFS[w.type];
-    send(`${def.title}の詳しい状況を教えて`);
+    send(buildWidgetDetailPrompt(w.type));
   };
 
   return (
